@@ -1,0 +1,11 @@
+version: '3'
+services:
+  vautomator:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+      args:
+        - TENABLEIO_ACCESS_KEY=${TENABLEIO_ACCESS_KEY}
+        - TENABLEIO_SECRET_KEY=${TENABLEIO_SECRET_KEY}
+    image: vautomator
+
