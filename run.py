@@ -8,10 +8,11 @@ import coloredlogs
 from urllib.parse import urlparse
 from lib import target, task, utils
 
+# Logging in UTC
 logger = logging.getLogger(__name__)
-# Default logging level is INFO
 coloredlogs.install(level='INFO', logger=logger, reconfigure=True,
-                    fmt='[%(hostname)s] %(asctime)s %(levelname)-8s %(message)s')
+                    fmt='[%(hostname)s] %(asctime)s %(levelname)-8s %(message)s',
+                    datefmt="%Y-%m-%d %I:%M:%S %p %Z")
 
 
 def setupVA(va_target):
@@ -33,7 +34,7 @@ def setupVA(va_target):
             va_target.addTask(task.DirectoryBruteTask(va_target, tool="dirb"))
         else:
             va_target.addTask(task.MozillaTLSObservatoryTask(va_target))
-            # va_target.addTask(task.DirectoryBruteTask(va_target, tool="dirb"))
+            va_target.addTask(task.DirectoryBruteTask(va_target, tool="dirb"))
             # HTTP Observatory does not like IPs as a target, skipping
             va_target.resultsdict.update({'httpobs': "PASS"})
     elif va_target.getType() == "IPv4":
@@ -73,9 +74,10 @@ def runVA(scan_with_tasks, outpath):
     results = scan_with_tasks.runTasks()
     # results here is a dict
     time.sleep(1)
+    # Return code check is a bit hacky,
+    # basically we are ignoring warnings from tar
     if utils.package_results(outpath).returncode is not 127:
         logger.info("[+] All done. Tool output from the scan can be found at " + outpath)
-        # return results
     else:
         logger.warning("[!] There was a problem compressing tool output. Check " + outpath + " manually.")
     time.sleep(1)
@@ -85,7 +87,6 @@ def runVA(scan_with_tasks, outpath):
 def main():
     
     results = {'nmap': False, 'nessus': False, 'tlsobs': False, 'httpobs': False, 'sshscan': False, 'dirbrute': False}
-    # Get targeting info
     destination = sys.argv[1]
     output_path = "/app/results/" + destination + "/"
     va_target = target.Target(destination, results)

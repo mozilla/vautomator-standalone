@@ -6,9 +6,11 @@ from netaddr import valid_ipv4
 from urllib.parse import urlparse
 from lib import task
 
+# Logging in UTC
 logger = logging.getLogger(__name__)
 coloredlogs.install(level='INFO', logger=logger, reconfigure=True,
-                    fmt='[%(hostname)s] %(asctime)s %(levelname)-8s %(message)s')
+                    fmt='[%(hostname)s] %(asctime)s %(levelname)-8s %(message)s',
+                    datefmt="%Y-%m-%d %I:%M:%S %p %Z")
 
 
 class Target:
@@ -89,7 +91,8 @@ class Target:
             return False
 
     def addTask(self, new_task):
-        # self.tasklist.append(new_task)
+        # This is a hacky way pf running ssh_scan
+        # right after nmap port scan
         if isinstance(new_task, task.SSHScanTask):
             self.tasklist.insert(2, new_task)
         else:
@@ -110,6 +113,7 @@ class Target:
             elif isinstance(one_task, task.NessusTask):
                 nessus_results = one_task.runNessusScan()
                 if (nessus_results):
+                    # TODO: Need to be more precise about this time check
                     epoch_cdate = nessus_results.histories()[0].creation_date
                     cdate = datetime.datetime.fromtimestamp(float(epoch_cdate))
                     if(cdate.date() < datetime.date.today()):

@@ -1,4 +1,4 @@
-FROM ruby:latest
+FROM ruby
 MAINTAINER Cag
 
 # This is to be able to talk to Tenable API

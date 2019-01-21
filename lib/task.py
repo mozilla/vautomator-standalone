@@ -11,9 +11,11 @@ from tenable_io.api.scans import ScanExportRequest
 from tenable_io.api.models import Scan
 from distutils.spawn import find_executable
 
+# Logging in UTC
 logger = logging.getLogger(__name__)
 coloredlogs.install(level='INFO', logger=logger, reconfigure=True,
-                    fmt='[%(hostname)s] %(asctime)s %(levelname)-8s %(message)s')
+                    fmt='[%(hostname)s] %(asctime)s %(levelname)-8s %(message)s',
+                    datefmt="%Y-%m-%d %I:%M:%S %p %Z")
 
 
 class Task:
@@ -34,16 +36,16 @@ class NmapTask(Task):
         # We need to check if SSH service is available within port scan results
         if (port_scan_results["".join(port_scan_results.all_hosts())].has_tcp(22)):
             # Port 22/tcp is open, perform ssh_scan scan
-            # SSHScanTask(self.tasktarget).runSSHScan(22)
             self.tasktarget.addTask(SSHScanTask(self.tasktarget, 22))
 
         else:
             # Need to find the actual SSH port, in case it is not 22
+            # Magic happens here...
+            # Ref: https://bitbucket.org/xael/python-nmap/src/2b493f71a26f63a01c155c073fbf0211a3219ff2/nmap/nmap.py?at=default&fileviewer=file-view-default#nmap.py-436:465
             for ssh_port in port_scan_results["".join(port_scan_results.all_hosts())].all_tcp():
                 if 'script' in port_scan_results["".join(port_scan_results.all_hosts())]['tcp'][ssh_port].keys():
                     if 'ssh' in "".join(port_scan_results["".join(port_scan_results.all_hosts())]['tcp'][ssh_port]['script'].values()).lower():
                         # We have SSH service on a non-standard port, perform scan
-                        # SSHScanTask(self.tasktarget).runSSHScan(ssh_port)
                         self.tasktarget.addTask(SSHScanTask(self.tasktarget, ssh_port))
         return
  
@@ -230,7 +232,7 @@ class NessusTask(Task):
             logger.error("[-] Tenable.io scan failed: ".format(TIOException))
             return False
 
-    def downloadReport(self, nscan, reportformat="html", style="vulns"):
+    def downloadReport(self, nscan, reportformat="html", style="assets"):
         report_path = "/app/results/" + self.tasktarget.targetdomain + "/Scan_for_" + self.tasktarget.targetdomain
         
         if reportformat == "html":
@@ -246,7 +248,7 @@ class NessusTask(Task):
         else:
             return False
 
-        if style == "vulns":
+        if style == "assets":
             reportoutline = ScanExportRequest.CHAPTER_CUSTOM_VULN_BY_HOST
         elif style == "exec":
             reportoutline = ScanExportRequest.CHAPTER_EXECUTIVE_SUMMARY
@@ -257,9 +259,9 @@ class NessusTask(Task):
 
         nscan.download(report_path, format=fmt, chapter=reportoutline)
 
-    def checkScanStatus(self, nscan, scan_history=None):
+    def checkScanStatus(self, nscan):
         # Query Tenable API to check if the scan is finished
-        status = nscan.status(nscan.id, scan_history)
+        status = nscan.status(nscan.id)
 
         if status == nscan.STATUS_COMPLETED:
             return "COMPLETE"
@@ -336,12 +338,12 @@ class DirectoryBruteTask(Task):
             logger.info("[+] Running dirb scan...")
             if "URL" in self.tasktarget.getType():
                 cmd = "/app/vendor/dirb222/dirb " + self.tasktarget.targetname \
-                    + "/ /app/vendor/dirb222/wordlists/common.txt -o /app/results/" \
-                    + self.tasktarget.targetdomain + "/https_dirb_common.txt -f"
+                    + "/ /app/vendor/dirb222/wordlists/small.txt -o /app/results/" \
+                    + self.tasktarget.targetdomain + "/https_dirb_common.txt -f -w -S -r"
             else:
                 cmd = "/app/vendor/dirb222/dirb https://" + self.tasktarget.targetdomain \
-                    + "/ /app/vendor/dirb222/wordlists/common.txt -o /app/results/" \
-                    + self.tasktarget.targetdomain + "/https_dirb_common.txt -f"
+                    + "/ /app/vendor/dirb222/wordlists/small.txt -o /app/results/" \
+                    + self.tasktarget.targetdomain + "/https_dirb_common.txt -f -w -S -r"
             
             dirbscan_cmd = utils.sanitise_shell_command(cmd)
             p = subprocess.Popen(dirbscan_cmd, stdout=subprocess.PIPE, shell=True)
