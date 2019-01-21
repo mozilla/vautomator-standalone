@@ -76,6 +76,9 @@ TENABLEIO_ACCESS_KEY=<ACCESS_KEY>
 TENABLEIO_SECRET_KEY=<SECRET_KEY>
 ```
 
+Technically admin permissions is not required to initiate a Tenable.io scan with API. This is required in the code because the tool checks if the target had been scanned in the last 15 days before launching a scan (and that requires admin perms). If it had, then the results are retrieved.
+You are OK to not provide API keys if you wish, and the tool will simply not run a Tenable.io scan in that case.
+
 #### Web App scans
 
 If you are running the tool against a URL, a number of additional external tools will be utilised. These will be installed in the Docker container when you build it.
