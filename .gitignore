@@ -108,3 +108,5 @@ venv.bak/
 # results files
 results/*
 
+# License files
+LICENSE
