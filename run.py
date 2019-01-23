@@ -14,6 +14,11 @@ coloredlogs.install(level='INFO', logger=logger, reconfigure=True,
                     fmt='[%(hostname)s] %(asctime)s %(levelname)-8s %(message)s',
                     datefmt="%Y-%m-%d %I:%M:%S %p %Z")
 
+def parseCmdArgs():
+
+    return
+
+
 
 def setupVA(va_target):
 
