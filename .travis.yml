@@ -1,0 +1,11 @@
+language: python
+matrix:
+  include:
+  - python: 3.6
+    env:
+      - LABEL=docker_unit_tests
+    services:
+      - docker
+    script:
+      - docker build -t mozilla/vautomator-standalone .
+      - docker run -it mozilla/vautomator-standalone pytest ./tests/
