@@ -291,9 +291,9 @@ class MozillaHTTPObservatoryTask(Task):
         if find_executable('observatory'):
             # Found in path, run the command
             logger.info("[+] Running HTTP Observatory scan...")
-            cmd = "observatory --format json -z --rescan " \
+            cmd = "observatory --format=report -z --rescan " \
                 + self.tasktarget.targetdomain + " > /app/results/" \
-                + self.tasktarget.targetdomain + "/httpobs_scan.json"
+                + self.tasktarget.targetdomain + "/httpobs_scan.txt"
             observatory_cmd = utils.sanitise_shell_command(cmd)
             p = subprocess.Popen(observatory_cmd, stdout=subprocess.PIPE, shell=True)
             p.wait()
@@ -338,11 +338,11 @@ class DirectoryBruteTask(Task):
             logger.info("[+] Running dirb scan...")
             if "URL" in self.tasktarget.getType():
                 cmd = "/app/vendor/dirb222/dirb " + self.tasktarget.targetname \
-                    + "/ /app/vendor/dirb222/wordlists/small.txt -o /app/results/" \
+                    + "/ /app/vendor/dirb222/wordlists/common.txt -o /app/results/" \
                     + self.tasktarget.targetdomain + "/https_dirb_common.txt -f -w -S -r"
             else:
                 cmd = "/app/vendor/dirb222/dirb https://" + self.tasktarget.targetdomain \
-                    + "/ /app/vendor/dirb222/wordlists/small.txt -o /app/results/" \
+                    + "/ /app/vendor/dirb222/wordlists/common.txt -o /app/results/" \
                     + self.tasktarget.targetdomain + "/https_dirb_common.txt -f -w -S -r"
             
             dirbscan_cmd = utils.sanitise_shell_command(cmd)
