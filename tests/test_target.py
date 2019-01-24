@@ -13,7 +13,7 @@ class TestTarget(object):
         assert target.Target(ipv4).valid_ip()
 
     def test_FQDNTarget(self):
-        fqdn = "infosecc.mozilla.org"
+        fqdn = "infosec.mozilla.org"
         assert target.Target(fqdn).valid_fqdn()
 
     def test_InvalidTarget(self):

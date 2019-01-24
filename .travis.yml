@@ -8,4 +8,4 @@ matrix:
       - docker
     script:
       - docker build -t mozilla/vautomator-standalone .
-      - docker run -it mozilla/vautomator-standalone pytest ./tests/
+      - docker run -it mozilla/vautomator-standalone python3 -m pytest ./tests/
