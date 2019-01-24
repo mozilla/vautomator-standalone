@@ -1,5 +1,6 @@
 import abc
 
+
 # This is an abstract class
 class Task(metaclass=abc.ABCMeta):
     # One target will have at least one task

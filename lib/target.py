@@ -91,7 +91,7 @@ class Target:
             return False
 
     def addTask(self, new_task):
-        # This is a hacky way pf running ssh_scan
+        # This is a hacky way of running ssh_scan
         # right after nmap port scan
         if isinstance(new_task, task.SSHScanTask):
             self.tasklist.insert(2, new_task)
@@ -105,13 +105,13 @@ class Target:
         for one_task in self.tasklist:
 
             if isinstance(one_task, task.NmapTask):
-                nmap_results = one_task.runNmapScan()
+                nmap_results = one_task.run()
                 if nmap_results:
                     logger.info("[+] Nmap port scan(s) successfully ran.")
                     self.resultsdict.update({'nmap': True})
 
             elif isinstance(one_task, task.NessusTask):
-                nessus_results = one_task.runNessusScan()
+                nessus_results = one_task.run()
                 if (nessus_results):
                     epoch_cdate = nessus_results.histories()[0].creation_date
                     cdate = datetime.datetime.fromtimestamp(float(epoch_cdate))
@@ -125,26 +125,26 @@ class Target:
                         fresh_nessus = nessus_results
 
             elif isinstance(one_task, task.MozillaTLSObservatoryTask):
-                tlsobs_results = one_task.runTLSObsScan()
+                tlsobs_results = one_task.run()
                 if (tlsobs_results and tlsobs_results.returncode == 0):
                     logger.info("[+] TLS Observatory scan successfully ran.")
                     self.resultsdict.update({'tlsobs': True})
 
             elif isinstance(one_task, task.MozillaHTTPObservatoryTask):
-                httpobs_results = one_task.runHttpObsScan()
+                httpobs_results = one_task.run()
                 # 0 is the returncode for successful execution
                 if (httpobs_results and httpobs_results.returncode == 0):
                     logger.info("[+] HTTP Observatory scan successfully ran.")
                     self.resultsdict.update({'httpobs': True})
 
             elif isinstance(one_task, task.SSHScanTask):
-                sshscan_results = one_task.runSSHScan()
+                sshscan_results = one_task.run()
                 if (sshscan_results and sshscan_results.returncode == 0):
                     logger.info("[+] SSH scan successfully ran.")
                     self.resultsdict.update({'sshscan': True})
 
             elif isinstance(one_task, task.DirectoryBruteTask):
-                dirbrute_results = one_task.runDirectoryBruteScan()
+                dirbrute_results = one_task.run()
                 if (dirbrute_results and dirbrute_results.returncode == 0):
                     logger.info("[+] Directory brute scan successfully ran.")
                     self.resultsdict.update({'dirbrute': True})

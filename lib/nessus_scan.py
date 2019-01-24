@@ -1,7 +1,7 @@
 import os
 import logging
 import coloredlogs
-from lib import target, utils, task
+from lib import task
 from tenable_io.client import TenableIOClient
 from tenable_io.exceptions import TenableIOApiException
 from tenable_io.api.scans import ScanExportRequest
@@ -40,7 +40,6 @@ class NessusTask(task):
             # Run a basic network scan on the target
             # Need to check if a recent scan was fired recently
             scan_name = "VA for " + self.tasktarget.targetdomain
-            # We will check with both host IP and FQDN
             activities = self.client.scan_helper.activities(targets=self.tasktarget.targetdomain, date_range=15)
             if (len(activities) > 0):
                 logger.warning("[!] The target has recently been scanned by Tenable.io, retrieving results...")
