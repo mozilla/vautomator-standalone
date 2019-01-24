@@ -113,10 +113,11 @@ class Target:
             elif isinstance(one_task, task.NessusTask):
                 nessus_results = one_task.runNessusScan()
                 if (nessus_results):
-                    # TODO: Need to be more precise about this time check
                     epoch_cdate = nessus_results.histories()[0].creation_date
                     cdate = datetime.datetime.fromtimestamp(float(epoch_cdate))
-                    if(cdate.date() < datetime.date.today()):
+                    # Checking the creation day of the scan to see if it's
+                    # older than 15 days
+                    if(cdate.date() < (datetime.date.today() - datetime.timedelta(days=15))):
                         self.resultsdict.update({'nessus': "OLD"})
                     else:
                         logger.info("[+] Tenable.io scan kicked off.")
