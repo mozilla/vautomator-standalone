@@ -1,7 +1,8 @@
 import nmap
 import logging
 import coloredlogs
-from lib import task, ssh_scan
+from lib.task import Task
+from lib.ssh_scan import SSHScan
 
 # This looks ugly and unnecessary in all files, 
 # should implement per module logging
@@ -11,7 +12,7 @@ coloredlogs.install(level='INFO', logger=logger, reconfigure=True,
                     datefmt="%Y-%m-%d %I:%M:%S %p %Z")
 
 
-class NmapTask(task):
+class NmapTask(Task):
 
     def __init__(self, target_obj, scan_type="full"):
         super().__init__(target_obj)

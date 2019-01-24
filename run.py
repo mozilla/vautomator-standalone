@@ -6,7 +6,8 @@ import time
 import logging
 import coloredlogs
 from urllib.parse import urlparse
-from lib import target, task, utils
+from lib import target, utils, dirbrute_scan, httpobs_scan, tlsobs_scan, ssh_scan, nmap_scan, nessus_scan
+
 
 # Logging in UTC
 logger = logging.getLogger(__name__)
@@ -21,32 +22,32 @@ def setupVA(va_target):
     # 1. Nessus scan
     # 2. Nmap scan
     # Also kicking of Nessus scan as the first task as it takes time
-    va_target.addTask(task.NessusTask(va_target))
-    va_target.addTask(task.NmapTask(va_target))
+    va_target.addTask(nessus_scan.NessusTask(va_target))
+    va_target.addTask(nmap_scan.NmapTask(va_target))
     
     if "URL" in va_target.getType():
         # We have a URL, means HTTP Obs, TLS Obs,
         # and directory brute scans are a go
         if va_target.getType() == "FQDN|URL":
             # We can run all tools/tasks
-            va_target.addTask(task.MozillaHTTPObservatoryTask(va_target))
-            va_target.addTask(task.MozillaTLSObservatoryTask(va_target))
-            va_target.addTask(task.DirectoryBruteTask(va_target, tool="dirb"))
+            va_target.addTask(httpobs_scan.MozillaHTTPObservatoryTask(va_target))
+            va_target.addTask(tlsobs_scan.MozillaTLSObservatoryTask(va_target))
+            va_target.addTask(dirbrute_scan.DirectoryBruteTask(va_target, tool="dirb"))
         else:
-            va_target.addTask(task.MozillaTLSObservatoryTask(va_target))
-            va_target.addTask(task.DirectoryBruteTask(va_target, tool="dirb"))
+            va_target.addTask(tlsobs_scan.MozillaTLSObservatoryTask(va_target))
+            va_target.addTask(dirbrute_scan.DirectoryBruteTask(va_target, tool="dirb"))
             # HTTP Observatory does not like IPs as a target, skipping
             va_target.resultsdict.update({'httpobs': "PASS"})
     elif va_target.getType() == "IPv4":
-        va_target.addTask(task.MozillaTLSObservatoryTask(va_target))
-        va_target.addTask(task.DirectoryBruteTask(va_target, tool="dirb"))
+        va_target.addTask(tlsobs_scan.MozillaTLSObservatoryTask(va_target))
+        va_target.addTask(dirbrute_scan.DirectoryBruteTask(va_target, tool="dirb"))
         # Again, HTTP Observatory does not like IPs as a target, skipping
         va_target.resultsdict.update({'httpobs': "PASS"})
     else:
         # FQDN, we can run all tools/tasks
-        va_target.addTask(task.MozillaHTTPObservatoryTask(va_target))
-        va_target.addTask(task.MozillaTLSObservatoryTask(va_target))
-        va_target.addTask(task.DirectoryBruteTask(va_target, tool="dirb"))
+        va_target.addTask(httpobs_scan.MozillaHTTPObservatoryTask(va_target))
+        va_target.addTask(tlsobs_scan.MozillaTLSObservatoryTask(va_target))
+        va_target.addTask(dirbrute_scan.DirectoryBruteTask(va_target, tool="dirb"))
     
     return va_target
 

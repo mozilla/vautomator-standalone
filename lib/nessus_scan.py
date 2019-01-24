@@ -1,7 +1,7 @@
 import os
 import logging
 import coloredlogs
-from lib import task
+from lib.task import Task
 from tenable_io.client import TenableIOClient
 from tenable_io.exceptions import TenableIOApiException
 from tenable_io.api.scans import ScanExportRequest
@@ -15,7 +15,7 @@ coloredlogs.install(level='INFO', logger=logger, reconfigure=True,
                     datefmt="%Y-%m-%d %I:%M:%S %p %Z")
 
 
-class NessusTask(task):
+class NessusTask(Task):
 
     def __init__(self, target_obj):
         super().__init__(target_obj)

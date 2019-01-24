@@ -1,7 +1,8 @@
 import logging
 import coloredlogs
 import subprocess
-from lib import utils, task
+from lib import utils
+from lib.task import Task
 
 # This looks ugly and unnecessary in all files, 
 # should implement per module logging
@@ -12,7 +13,7 @@ coloredlogs.install(level='INFO', logger=logger, reconfigure=True,
                     datefmt="%Y-%m-%d %I:%M:%S %p %Z")
 
 
-class DirectoryBruteTask(task):
+class DirectoryBruteTask(Task):
 
     def __init__(self, target_obj, tool="dirb"):
         super().__init__(target_obj)
