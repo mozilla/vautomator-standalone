@@ -18,7 +18,7 @@ class Target:
     # Here, tasklist is a list of Task objects
     def __init__(self, target, results_dict={}):
         self.targetname = target
-        self.targetdomain = ""
+        self.targetdomain = target
         self.type = ""
         self.tasklist = []
         self.resultsdict = results_dict
