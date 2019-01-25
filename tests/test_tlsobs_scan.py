@@ -4,6 +4,7 @@ import coloredlogs
 import subprocess
 from lib import utils
 from lib.task import Task
+from lib.target import Target
 from lib.tlsobs_scan import MozillaTLSObservatoryTask
 
 
