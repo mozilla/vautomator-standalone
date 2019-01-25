@@ -110,3 +110,6 @@ results/*
 
 # License files
 LICENSE
+
+# DS Store files
+.DS_Store
