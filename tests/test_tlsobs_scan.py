@@ -6,4 +6,11 @@ from lib import utils
 from lib.task import Task
 from lib.tlsobs_scan import MozillaTLSObservatoryTask
 
-# ADD THE TESTS FOR TLSOBS SCAN
+
+class TestMozillaTLSObservatoryTask(object):
+    def test_run(self):
+        fqdn = "www.mozilla.org"
+        target = Target(fqdn)
+        task = MozillaTLSObservatoryTask(target)
+
+        assert (task.foo == "insert something we want to assert about task")

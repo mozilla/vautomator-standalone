@@ -15,18 +15,18 @@ coloredlogs.install(level='INFO', logger=logger, reconfigure=True,
 
 class MozillaTLSObservatoryTask(Task):
 
-    def __init__(self, target_obj):
-        self.tasktarget = target_obj
+    def __init__(self, target):
+        self.target = target
 
     def run(self):
         if find_executable('tlsobs'):
             # Found in path, run the command
             logger.info("[+] Running TLS Observatory scan...")
-            cmd = "tlsobs -r -raw " + self.tasktarget.targetname \
-                + " > /app/results/" + self.tasktarget.targetdomain \
+            cmd = "tlsobs -r -raw " + self.target.targetname \
+                + " > /app/results/" + self.target.targetdomain \
                 + "/tlsobs_scan.txt"
-            tlsobs_cmd = utils.sanitise_shell_command(cmd)
-            p = subprocess.Popen(tlsobs_cmd, stdout=subprocess.PIPE, shell=True)
+            cmd = utils.sanitise_shell_command(cmd)
+            p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
             p.wait()
             return p
         else:
