@@ -1,8 +1,9 @@
 import nmap
+import json
 import logging
 import coloredlogs
 from lib.task import Task
-from lib.ssh_scan import SSHScan
+from lib.ssh_scan import SSHScanTask
 
 # This looks ugly and unnecessary in all files, 
 # should implement per module logging
@@ -15,14 +16,14 @@ coloredlogs.install(level='INFO', logger=logger, reconfigure=True,
 class NmapTask(Task):
 
     def __init__(self, target_obj, scan_type="full"):
-        super().__init__(target_obj)
+        self.tasktarget = target_obj
         self.portscan_type = scan_type
 
     def checkForSSH(self, port_scan_results):
         # We need to check if SSH service is available within port scan results
         if (port_scan_results["".join(port_scan_results.all_hosts())].has_tcp(22)):
             # Port 22/tcp is open, perform ssh_scan scan
-            self.tasktarget.addTask(ssh_scan.SSHScanTask(self.tasktarget, 22))
+            self.tasktarget.addTask(SSHScanTask(self.tasktarget, 22))
 
         else:
             # Need to find the actual SSH port, in case it is not 22
@@ -32,7 +33,7 @@ class NmapTask(Task):
                 if 'script' in port_scan_results["".join(port_scan_results.all_hosts())]['tcp'][ssh_port].keys():
                     if 'ssh' in "".join(port_scan_results["".join(port_scan_results.all_hosts())]['tcp'][ssh_port]['script'].values()).lower():
                         # We have SSH service on a non-standard port, perform scan
-                        self.tasktarget.addTask(ssh_scan.SSHScanTask(self.tasktarget, ssh_port))
+                        self.tasktarget.addTask(SSHScanTask(self.tasktarget, ssh_port))
         return
  
     def run(self):
@@ -162,7 +163,8 @@ class NmapTask(Task):
                                  "60020,60443,61532,61900,62078,63331,64623,"
                                  "64680,65000,65129,65389")
             nmap_arguments = '-v -Pn -sTU -sV --script=banner -p T:' + tcp_top1000_ports + ',U:' + udp_ports + ' --open -T4 --system-dns'
-            isSudo = True
+            # This is only false because we are running in container as root
+            isSudo = False
             results = nm.scan(self.tasktarget.targetdomain, arguments=nmap_arguments, sudo=isSudo)
 
         self.checkForSSH(nm)

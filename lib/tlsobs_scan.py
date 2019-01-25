@@ -16,7 +16,7 @@ coloredlogs.install(level='INFO', logger=logger, reconfigure=True,
 class MozillaTLSObservatoryTask(Task):
 
     def __init__(self, target_obj):
-        super().__init__(target_obj)
+        self.tasktarget = target_obj
 
     def run(self):
         if find_executable('tlsobs'):

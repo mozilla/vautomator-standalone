@@ -14,15 +14,16 @@ coloredlogs.install(level='INFO', logger=logger, reconfigure=True,
 
 
 class SSHScanTask(Task):
+
     def __init__(self, target_obj, port=22):
-        super().__init__(target_obj)
-        self.port = port
+        self.tasktarget = target_obj
+        self.ssh_port = port
 
     def run(self):
         if find_executable('ssh_scan'):
             # Found in path, run the command
             # logger.info("[+] Running ssh_scan...")
-            cmd = "ssh_scan -t " + self.task_target.targetdomain + " -p " \
+            cmd = "ssh_scan -t " + self.tasktarget.targetdomain + " -p " \
                 + str(self.ssh_port) + " -o /app/results/" + self.tasktarget.targetdomain \
                 + "/ssh_scan.txt"
             sshscan_cmd = utils.sanitise_shell_command(cmd)

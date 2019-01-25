@@ -16,7 +16,7 @@ coloredlogs.install(level='INFO', logger=logger, reconfigure=True,
 class DirectoryBruteTask(Task):
 
     def __init__(self, target_obj, tool="dirb"):
-        super().__init__(target_obj)
+        self.tasktarget = target_obj
         self.toolToRun = tool
 
     def run(self):

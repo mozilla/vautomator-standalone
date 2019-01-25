@@ -18,13 +18,13 @@ coloredlogs.install(level='INFO', logger=logger, reconfigure=True,
 class NessusTask(Task):
 
     def __init__(self, target_obj):
-        super().__init__(target_obj)
+        self.tasktarget = target_obj
         # According to documentation TenableIO client can be initialised
         # in a number of ways. I choose here the environment variable option.
         self.tio_access_key = os.getenv('TENABLEIO_ACCESS_KEY')
         self.tio_secret_key = os.getenv('TENABLEIO_SECRET_KEY')
 
-    def runNessusScan(self):
+    def run(self):
 
         # First, check to see if we are provided with API keys
         if (self.tio_access_key == "" or self.tio_secret_key == ""):
