@@ -13,4 +13,4 @@ class TestMozillaTLSObservatoryTask(object):
         target = Target(fqdn)
         task = MozillaTLSObservatoryTask(target)
 
-        assert (task.foo == "insert something we want to assert about task")
+        assert (task.run == "insert something we want to assert about task")
