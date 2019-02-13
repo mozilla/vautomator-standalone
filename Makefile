@@ -13,6 +13,24 @@ build: Dockerfile docker-compose.yml
 scan:
 	docker run -v ${PWD}/results:/app/results -it vautomator:latest ./run.py $(TARGET)
 
+.PHONY: test
+test:
+	python -m pytest tests/
+
+.PHONY: flake8
+flake8:
+	flake8 lib/*py
+	flake8 tests/*py
+
+.PHONY: test-tox
+test-tox:
+	tox
+
 .PHONY: clean
 clean:
 	rm -rf results
+	rm -rf .tox
+	rm -rf .eggs
+	rm -rf .pytest_cache
+	find . -name __pycache__ -type d -exec rm -rf {}\;
+	rm -rf vautomator.egg-info

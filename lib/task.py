@@ -5,7 +5,7 @@ import json
 import nmap
 import subprocess
 import time
-from lib import target, utils
+from lib import utils
 from tenable_io.client import TenableIOClient
 from tenable_io.exceptions import TenableIOApiException
 from tenable_io.api.scans import ScanExportRequest
@@ -59,7 +59,8 @@ class NmapTask(Task):
         else:
             # Need to find the actual SSH port, in case it is not 22
             # Magic happens here...
-            # Ref: https://bitbucket.org/xael/python-nmap/src/2b493f71a26f63a01c155c073fbf0211a3219ff2/nmap/nmap.py?at=default&fileviewer=file-view-default#nmap.py-436:465
+            # Ref: https://bitbucket.org/xael/python-nmap/src/2b493f71a26f63a01c155c073fbf0211a3219ff2/
+            # nmap/nmap.py?at=default&fileviewer=file-view-default#nmap.py-436:465
             for ssh_port in port_scan_results["".join(port_scan_results.all_hosts())].all_tcp():
                 if "script" in port_scan_results["".join(port_scan_results.all_hosts())]["tcp"][ssh_port].keys():
                     if (
