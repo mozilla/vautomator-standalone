@@ -4,6 +4,7 @@ import coloredlogs
 import json
 import nmap
 import subprocess
+import time
 from lib import target, utils
 from tenable_io.client import TenableIOClient
 from tenable_io.exceptions import TenableIOApiException
@@ -13,9 +14,13 @@ from distutils.spawn import find_executable
 
 # Logging in UTC
 logger = logging.getLogger(__name__)
-coloredlogs.install(level='INFO', logger=logger, reconfigure=True,
-                    fmt='[%(hostname)s] %(asctime)s %(levelname)-8s %(message)s',
-                    datefmt="%Y-%m-%d %I:%M:%S %p %Z")
+coloredlogs.install(
+    level="INFO",
+    logger=logger,
+    reconfigure=True,
+    fmt="[%(hostname)s] %(asctime)s %(levelname)-8s %(message)s",
+    datefmt="%Y-%m-%d %I:%M:%S %p %Z",
+)
 
 
 class Task:
@@ -25,16 +30,29 @@ class Task:
     def __init__(self, target_obj):
         self.tasktarget = target_obj
 
+    def wait_process_timeout(self, proc, seconds):
+        """Wait for a process to finish, or raise exception after timeout"""
+        start = time.time()
+        end = start + seconds
+        interval = min(seconds / 1000.0, 0.25)
+
+        while True:
+            result = proc.poll()
+            if result is not None:
+                return result
+            if time.time() >= end:
+                raise RuntimeError("Process timed out")
+            time.sleep(interval)
+
 
 class NmapTask(Task):
-
     def __init__(self, target_obj, scan_type="full"):
         super().__init__(target_obj)
         self.portscan_type = scan_type
 
     def checkForSSH(self, port_scan_results):
         # We need to check if SSH service is available within port scan results
-        if (port_scan_results["".join(port_scan_results.all_hosts())].has_tcp(22)):
+        if port_scan_results["".join(port_scan_results.all_hosts())].has_tcp(22):
             # Port 22/tcp is open, perform ssh_scan scan
             self.tasktarget.addTask(SSHScanTask(self.tasktarget, 22))
 
@@ -43,12 +61,19 @@ class NmapTask(Task):
             # Magic happens here...
             # Ref: https://bitbucket.org/xael/python-nmap/src/2b493f71a26f63a01c155c073fbf0211a3219ff2/nmap/nmap.py?at=default&fileviewer=file-view-default#nmap.py-436:465
             for ssh_port in port_scan_results["".join(port_scan_results.all_hosts())].all_tcp():
-                if 'script' in port_scan_results["".join(port_scan_results.all_hosts())]['tcp'][ssh_port].keys():
-                    if 'ssh' in "".join(port_scan_results["".join(port_scan_results.all_hosts())]['tcp'][ssh_port]['script'].values()).lower():
+                if "script" in port_scan_results["".join(port_scan_results.all_hosts())]["tcp"][ssh_port].keys():
+                    if (
+                        "ssh"
+                        in "".join(
+                            port_scan_results["".join(port_scan_results.all_hosts())]["tcp"][ssh_port][
+                                "script"
+                            ].values()
+                        ).lower()
+                    ):
                         # We have SSH service on a non-standard port, perform scan
                         self.tasktarget.addTask(SSHScanTask(self.tasktarget, ssh_port))
         return
- 
+
     def runNmapScan(self):
 
         # Note, python-nmap relies on nmap being installed
@@ -59,25 +84,28 @@ class NmapTask(Task):
 
         nm = nmap.PortScanner()
         isSudo = False
-        udp_ports = ("17,19,53,67,68,123,137,138,139,"
+        udp_ports = (
+            "17,19,53,67,68,123,137,138,139,"
             "161,162,500,520,646,1900,3784,3785,5353,27015,"
-            "27016,27017,27018,27019,27020,27960")
+            "27016,27017,27018,27019,27020,27960"
+        )
         if self.portscan_type == "tcp":
-            nmap_arguments = '-v -Pn -sT -sV --script=banner --top-ports 1000 --open -T4 --system-dns'
+            nmap_arguments = "-v -Pn -sT -sV --script=banner --top-ports 1000 --open -T4 --system-dns"
             results = nm.scan(self.tasktarget.targetdomain, arguments=nmap_arguments, sudo=isSudo)
 
         elif self.portscan_type == "udp":
-            nmap_arguments = '-v -Pn -sU -sV --open -T4 --system-dns'
+            nmap_arguments = "-v -Pn -sU -sV --open -T4 --system-dns"
             isSudo = True
             results = nm.scan(self.tasktarget.targetdomain, ports=udp_ports, arguments=nmap_arguments, sudo=isSudo)
 
         else:
             # Need to run both UDP and TCP scans
             # This looks rather ugly however it's a current way to
-            # specify different ports for TCP and UDP scans in a 
+            # specify different ports for TCP and UDP scans in a
             # single nmap command: https://seclists.org/nmap-dev/2011/q2/365
             # TODO: Perhaps read this from an environment variable or config
-            tcp_top1000_ports = ("1,3-4,6-7,9,13,17,19-26,30,32-33,"
+            tcp_top1000_ports = (
+                "1,3-4,6-7,9,13,17,19-26,30,32-33,"
                 "37,42-43,49,53,70,79-85,88-90,99-100,106,109-111,"
                 "113,119,125,135,139,143-144,146,161,163,179,199,"
                 "211-212,222,254-256,259,264,280,301,306,311,340,"
@@ -146,8 +174,15 @@ class NmapTask(Task):
                 "49400,49999-50003,50006,50300,50389,50500,50636,50800,"
                 "51103,51493,52673,52822,52848,52869,54045,54328,55055-55056,"
                 "55555,55600,56737-56738,57294,57797,58080,60020,60443,"
-                "61532,61900,62078,63331,64623,64680,65000,65129,65389")
-            nmap_arguments = '-v -Pn -sTU -sV --script=banner -p T:' + tcp_top1000_ports + ',U:' + udp_ports + ' --open -T4 --system-dns'
+                "61532,61900,62078,63331,64623,64680,65000,65129,65389"
+            )
+            nmap_arguments = (
+                "-v -Pn -sTU -sV --script=banner -p T:"
+                + tcp_top1000_ports
+                + ",U:"
+                + udp_ports
+                + " --open -T4 --system-dns"
+            )
             isSudo = True
             results = nm.scan(self.tasktarget.targetdomain, arguments=nmap_arguments, sudo=False)
 
@@ -155,8 +190,7 @@ class NmapTask(Task):
 
         if results:
             try:
-                nmap_output = open("/app/results/" + self.tasktarget.targetdomain + "/"
-                                   + "nmap_tcp.json", "w+")
+                nmap_output = open("/app/results/" + self.tasktarget.targetdomain + "/" + "nmap_tcp.json", "w+")
                 nmap_output.write(json.dumps(results))
                 return True
             except Exception:
@@ -165,18 +199,23 @@ class NmapTask(Task):
 
 
 class SSHScanTask(Task):
-
     def __init__(self, target_obj, sshport=22):
         super().__init__(target_obj)
         self.ssh_port = sshport
 
     def runSSHScan(self):
-        if find_executable('ssh_scan'):
+        if find_executable("ssh_scan"):
             # Found in path, run the command
             logger.info("[+] Running ssh_scan...")
-            cmd = "ssh_scan -t " + self.tasktarget.targetdomain + " -p " \
-                + str(self.ssh_port) + " -o /app/results/" + self.tasktarget.targetdomain \
+            cmd = (
+                "ssh_scan -t "
+                + self.tasktarget.targetdomain
+                + " -p "
+                + str(self.ssh_port)
+                + " -o /app/results/"
+                + self.tasktarget.targetdomain
                 + "/ssh_scan.txt"
+            )
             sshscan_cmd = utils.sanitise_shell_command(cmd)
             p = subprocess.Popen(sshscan_cmd, stdout=subprocess.PIPE, shell=True)
             p.wait()
@@ -187,20 +226,20 @@ class SSHScanTask(Task):
 
 
 class NessusTask(Task):
-
     def __init__(self, target_obj):
         super().__init__(target_obj)
         # According to documentation TenableIO client can be initialised
         # in a number of ways. I choose here the environment variable option.
-        self.tio_access_key = os.getenv('TENABLEIO_ACCESS_KEY')
-        self.tio_secret_key = os.getenv('TENABLEIO_SECRET_KEY')
+        self.tio_access_key = os.getenv("TENABLEIO_ACCESS_KEY")
+        self.tio_secret_key = os.getenv("TENABLEIO_SECRET_KEY")
 
     def runNessusScan(self):
 
         # First, check to see if we are provided with API keys
-        if (self.tio_access_key == "" or self.tio_secret_key == ""):
-            logger.warning("[!] Tenable.io API key(s) not provided, skipping "
-                           "Tenable.io scan. Perform the scan manually.")
+        if self.tio_access_key == "" or self.tio_secret_key == "":
+            logger.warning(
+                "[!] Tenable.io API key(s) not provided, skipping " "Tenable.io scan. Perform the scan manually."
+            )
             return False
         else:
             self.client = TenableIOClient(access_key=self.tio_access_key, secret_key=self.tio_secret_key)
@@ -213,7 +252,7 @@ class NessusTask(Task):
             scan_name = "VA for " + self.tasktarget.targetdomain
             # We will check with both host IP and FQDN
             activities = self.client.scan_helper.activities(targets=self.tasktarget.targetdomain, date_range=15)
-            if (len(activities) > 0):
+            if len(activities) > 0:
                 logger.warning("[!] The target has recently been scanned by Tenable.io, retrieving results...")
                 old_nscans = self.client.scan_helper.scans(name=scan_name)
                 for old in old_nscans:
@@ -224,7 +263,9 @@ class NessusTask(Task):
             else:
                 # This target was not scanned before, scan it
                 # We don't want this blocking, so don't wait
-                new_nscan = self.client.scan_helper.create(name=scan_name, text_targets=self.tasktarget.targetdomain, template='basic')
+                new_nscan = self.client.scan_helper.create(
+                    name=scan_name, text_targets=self.tasktarget.targetdomain, template="basic"
+                )
                 new_nscan.launch(wait=False)
                 return new_nscan
 
@@ -234,7 +275,7 @@ class NessusTask(Task):
 
     def downloadReport(self, nscan, reportformat="html", style="assets"):
         report_path = "/app/results/" + self.tasktarget.targetdomain + "/Scan_for_" + self.tasktarget.targetdomain
-        
+
         if reportformat == "html":
             fmt = ScanExportRequest.FORMAT_HTML
         elif reportformat == "pdf":
@@ -279,7 +320,6 @@ class NessusTask(Task):
 
 
 class MozillaHTTPObservatoryTask(Task):
-
     def __init__(self, target_obj):
         super().__init__(target_obj)
 
@@ -288,12 +328,16 @@ class MozillaHTTPObservatoryTask(Task):
             # HTTP Obs only accepts FQDN
             return False
 
-        if find_executable('observatory'):
+        if find_executable("observatory"):
             # Found in path, run the command
             logger.info("[+] Running HTTP Observatory scan...")
-            cmd = "observatory --format=report -z --rescan " \
-                + self.tasktarget.targetdomain + " > /app/results/" \
-                + self.tasktarget.targetdomain + "/httpobs_scan.txt"
+            cmd = (
+                "observatory --format=report -z --rescan "
+                + self.tasktarget.targetdomain
+                + " > /app/results/"
+                + self.tasktarget.targetdomain
+                + "/httpobs_scan.txt"
+            )
             observatory_cmd = utils.sanitise_shell_command(cmd)
             p = subprocess.Popen(observatory_cmd, stdout=subprocess.PIPE, shell=True)
             p.wait()
@@ -305,17 +349,20 @@ class MozillaHTTPObservatoryTask(Task):
 
 
 class MozillaTLSObservatoryTask(Task):
-
     def __init__(self, target_obj):
         super().__init__(target_obj)
 
     def runTLSObsScan(self):
-        if find_executable('tlsobs'):
+        if find_executable("tlsobs"):
             # Found in path, run the command
             logger.info("[+] Running TLS Observatory scan...")
-            cmd = "tlsobs -r -raw " + self.tasktarget.targetname \
-                + " > /app/results/" + self.tasktarget.targetdomain \
+            cmd = (
+                "tlsobs -r -raw "
+                + self.tasktarget.targetname
+                + " > /app/results/"
+                + self.tasktarget.targetdomain
                 + "/tlsobs_scan.txt"
+            )
             tlsobs_cmd = utils.sanitise_shell_command(cmd)
             p = subprocess.Popen(tlsobs_cmd, stdout=subprocess.PIPE, shell=True)
             p.wait()
@@ -326,39 +373,60 @@ class MozillaTLSObservatoryTask(Task):
 
 
 class DirectoryBruteTask(Task):
-
     def __init__(self, target_obj, tool="dirb"):
         super().__init__(target_obj)
         self.toolToRun = tool
 
     def runDirectoryBruteScan(self):
-        if (self.toolToRun == "dirb"):
+        if self.toolToRun == "dirb":
             # dirb is compiled from source, won't be in the PATH
             # Also defaulting to HTTPS URL here
             logger.info("[+] Running dirb scan...")
             if "URL" in self.tasktarget.getType():
-                cmd = "/app/vendor/dirb222/dirb " + self.tasktarget.targetname \
-                    + "/ /app/vendor/dirb222/wordlists/common.txt -o /app/results/" \
-                    + self.tasktarget.targetdomain + "/https_dirb_common.txt -f -w -S -r"
+                cmd = (
+                    "/app/vendor/dirb222/dirb "
+                    + self.tasktarget.targetname
+                    + "/ /app/vendor/dirb222/wordlists/common.txt -o /app/results/"
+                    + self.tasktarget.targetdomain
+                    + "/https_dirb_common.txt -f -w -S -r"
+                )
             else:
-                cmd = "/app/vendor/dirb222/dirb https://" + self.tasktarget.targetdomain \
-                    + "/ /app/vendor/dirb222/wordlists/common.txt -o /app/results/" \
-                    + self.tasktarget.targetdomain + "/https_dirb_common.txt -f -w -S -r"
-            
+                cmd = (
+                    "/app/vendor/dirb222/dirb https://"
+                    + self.tasktarget.targetdomain
+                    + "/ /app/vendor/dirb222/wordlists/common.txt -o /app/results/"
+                    + self.tasktarget.targetdomain
+                    + "/https_dirb_common.txt -f -w -S -r"
+                )
+
             dirbscan_cmd = utils.sanitise_shell_command(cmd)
             p = subprocess.Popen(dirbscan_cmd, stdout=subprocess.PIPE, shell=True)
-            p.wait()
+            try:
+                # Give it 15min
+                self.wait_process_timeout(p, 900)
+            except RuntimeError:
+                p.kill()
+                logger.warning("[!] dirb timed out, process killed")
+
             return p
-        elif (self.toolToRun == "gobuster"):
+        elif self.toolToRun == "gobuster":
             logger.info("[+] Running gobuster scan...")
             if "URL" in self.tasktarget.getType():
-                cmd = "go run /app/vendor/gobuster-master/main.go " + self.tasktarget.targetname \
-                    + " -w /app/vendor/dirb222/wordlists/common.txt -v -l -o /app/results/" \
-                    + self.tasktarget.targetdomain + "/gobuster_common.txt"
+                cmd = (
+                    "go run /app/vendor/gobuster-master/main.go "
+                    + self.tasktarget.targetname
+                    + " -w /app/vendor/dirb222/wordlists/common.txt -v -l -o /app/results/"
+                    + self.tasktarget.targetdomain
+                    + "/gobuster_common.txt"
+                )
             else:
-                cmd = "go run /app/vendor/gobuster-master/main.go https://" + self.tasktarget.targetdomain \
-                    + " -w /app/vendor/dirb222/wordlists/common.txt -v -l -o /app/results/" \
-                    + self.tasktarget.targetdomain + "/gobuster_common.txt"
+                cmd = (
+                    "go run /app/vendor/gobuster-master/main.go https://"
+                    + self.tasktarget.targetdomain
+                    + " -w /app/vendor/dirb222/wordlists/common.txt -v -l -o /app/results/"
+                    + self.tasktarget.targetdomain
+                    + "/gobuster_common.txt"
+                )
 
             gobuster_cmd = utils.sanitise_shell_command(cmd)
             p = subprocess.Popen(gobuster_cmd, stdout=subprocess.PIPE, shell=True)
