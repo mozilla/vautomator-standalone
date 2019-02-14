@@ -6,8 +6,8 @@ If you'd like to contribute, please reach out to [me](https://mozillians.org/en-
 ## Install & Running 
 
 1. First, download the repo: `git clone https://github.com/caggle/vautomator-standalone.git && cd vautomator-standalone`
-2. Build the Docker image: `docker-compose build vautomator`
-3. Run it!: `docker run -v ${PWD}/results:/app/results -it vautomator:latest ./run.py <target>`
+2. Build the Docker image: `make build`
+3. Run it!: `make run TARGET=https://example.net`
 4. You can review tool results in the ./results folder while vautomator does it's thing
 
 Example run:

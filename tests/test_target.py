@@ -5,8 +5,7 @@ class TestTarget(object):
     def test_URLtarget(self):
         fqdnurl = "https://www.mozilla.org"
         ipv4url = "http://10.10.10.10"
-        assert (target.Target(fqdnurl).isValid() and
-                target.Target(ipv4url).isValid())
+        assert target.Target(fqdnurl).isValid() and target.Target(ipv4url).isValid()
 
     def test_IPv4Target(self):
         ipv4 = "10.10.10.10"
@@ -28,5 +27,3 @@ class TestTarget(object):
 
         bad_domain = "sodiajdoaijwo"
         assert not target.Target(bad_domain).isValid()
-
-
