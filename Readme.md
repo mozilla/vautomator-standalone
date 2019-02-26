@@ -7,12 +7,13 @@ If you'd like to contribute, please reach out to [me](https://mozillians.org/en-
 
 1. First, download the repo: `git clone https://github.com/caggle/vautomator-standalone.git && cd vautomator-standalone`
 2. Build the Docker image: `make build`
-3. Run it!: `make run TARGET=https://example.net`
+3. Run it!: `make scan TARGET=https://example.net`
 4. You can review tool results in the ./results folder while vautomator does it's thing
 
 Example run:
 ```
-$ docker run -v ${PWD}/results:/app/results -it vautomator:latest ./run.py http://192.168.0.1
+$ make scan TARGET=http://192.168.0.1
+docker run -v ${PWD}/results:/app/results -it vautomator:latest ./run.py http://192.168.0.1
 [f2769b83b62b] 2019-01-21 06:23:51 AM UTC INFO     [+] Running all the scans now. This may take a while...
 [f2769b83b62b] 2019-01-21 06:24:23 AM UTC WARNING  [!] The target has recently been scanned by Tenable.io, retrieving results...
 [f2769b83b62b] 2019-01-21 06:24:30 AM UTC INFO     [+] Running nmap port scans...
@@ -82,7 +83,7 @@ You are OK to not provide API keys if you wish, and the tool will simply not run
 #### Web App scans
 
 If you are running the tool against a URL, a number of additional external tools will be utilised. These will be installed in the Docker container when you build it.
-* [HTTP Observatory](https://github.com/mozilla/http-observatory) is used as a Python module.
+* [observatory](https://github.com/mozilla/observatory-cli) client for HTTP Observatory is used.
 * [TLS Observatory](https://github.com/mozilla/tls-observatory), by means of `tlsobs` client.
 * For directory brute-forcing:
   * By default, `dirb` will be used with the common wordlist.
