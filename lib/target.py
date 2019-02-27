@@ -8,9 +8,13 @@ from lib import task
 
 # Logging in UTC
 logger = logging.getLogger(__name__)
-coloredlogs.install(level='INFO', logger=logger, reconfigure=True,
-                    fmt='[%(hostname)s] %(asctime)s %(levelname)-8s %(message)s',
-                    datefmt="%Y-%m-%d %I:%M:%S %p %Z")
+coloredlogs.install(
+    level="INFO",
+    logger=logger,
+    reconfigure=True,
+    fmt="[%(hostname)s] %(asctime)s %(levelname)-8s %(message)s",
+    datefmt="%Y-%m-%d %I:%M:%S %p %Z",
+)
 
 
 class Target:
@@ -33,13 +37,7 @@ class Target:
         if not isinstance(self.targetname, str):
             return False
 
-        starts_with_anti_patterns = [
-            '127.0.0',
-            '10.',
-            '172.',
-            '192.168',
-            '169.254.169.254'
-        ]
+        starts_with_anti_patterns = ["127.0.0", "10.", "172.", "192.168", "169.254.169.254"]
 
         for pattern in starts_with_anti_patterns:
             if self.targetname.startswith(pattern):
@@ -79,7 +77,6 @@ class Target:
         if valid_ipv4(self.targetname):
             self.type = "IPv4"
             return True
-        
         return False
 
     def valid_fqdn(self):
@@ -99,7 +96,6 @@ class Target:
             self.tasklist.insert(len(self.tasklist), new_task)
 
     def runTasks(self):
-        
         fresh_nessus = None
 
         for one_task in self.tasklist:
@@ -108,55 +104,58 @@ class Target:
                 nmap_results = one_task.runNmapScan()
                 if nmap_results:
                     logger.info("[+] Nmap port scan(s) successfully ran.")
-                    self.resultsdict.update({'nmap': True})
+                    self.resultsdict.update({"nmap": True})
 
             elif isinstance(one_task, task.NessusTask):
                 nessus_results = one_task.runNessusScan()
-                if (nessus_results):
-                    # TODO: Need to be more precise about this time check
+                if nessus_results:
                     epoch_cdate = nessus_results.histories()[0].creation_date
                     cdate = datetime.datetime.fromtimestamp(float(epoch_cdate))
-                    if(cdate.date() < datetime.date.today()):
-                        self.resultsdict.update({'nessus': "OLD"})
+                    # Checking the creation day of the scan to see if it's
+                    # older than 15 days
+                    if cdate.date() < (datetime.date.today() - datetime.timedelta(days=15)):
+                        self.resultsdict.update({"nessus": "OLD"})
                     else:
                         logger.info("[+] Tenable.io scan kicked off.")
-                        self.resultsdict.update({'nessus': True})
+                        self.resultsdict.update({"nessus": True})
                         fresh_nessus = nessus_results
 
             elif isinstance(one_task, task.MozillaTLSObservatoryTask):
                 tlsobs_results = one_task.runTLSObsScan()
-                if (tlsobs_results and tlsobs_results.returncode == 0):
+                if tlsobs_results and tlsobs_results.returncode == 0:
                     logger.info("[+] TLS Observatory scan successfully ran.")
-                    self.resultsdict.update({'tlsobs': True})
+                    self.resultsdict.update({"tlsobs": True})
 
             elif isinstance(one_task, task.MozillaHTTPObservatoryTask):
                 httpobs_results = one_task.runHttpObsScan()
                 # 0 is the returncode for successful execution
-                if (httpobs_results and httpobs_results.returncode == 0):
+                if httpobs_results and httpobs_results.returncode == 0:
                     logger.info("[+] HTTP Observatory scan successfully ran.")
-                    self.resultsdict.update({'httpobs': True})
+                    self.resultsdict.update({"httpobs": True})
 
             elif isinstance(one_task, task.SSHScanTask):
                 sshscan_results = one_task.runSSHScan()
-                if (sshscan_results and sshscan_results.returncode == 0):
+                if sshscan_results and sshscan_results.returncode == 0:
                     logger.info("[+] SSH scan successfully ran.")
-                    self.resultsdict.update({'sshscan': True})
+                    self.resultsdict.update({"sshscan": True})
 
             elif isinstance(one_task, task.DirectoryBruteTask):
                 dirbrute_results = one_task.runDirectoryBruteScan()
-                if (dirbrute_results and dirbrute_results.returncode == 0):
+                if dirbrute_results and dirbrute_results.returncode == 0:
                     logger.info("[+] Directory brute scan successfully ran.")
-                    self.resultsdict.update({'dirbrute': True})
+                    self.resultsdict.update({"dirbrute": True})
 
             else:
                 logger.error("[-] No or unidentified task specified!")
                 return False
 
         # Need to check if the current Nessus scan is complete
-        if (self.resultsdict['nessus'] and self.resultsdict['nessus'] is not "OLD"):
-            if (task.NessusTask(self.targetname).checkScanStatus(fresh_nessus) == "COMPLETE"):
+        if self.resultsdict["nessus"] and self.resultsdict["nessus"] != "OLD":
+            if task.NessusTask(self.targetname).checkScanStatus(fresh_nessus) == "COMPLETE":
                 task.NessusTask(self.targetname).downloadReport(fresh_nessus)
             else:
-                logger.warning("[!] Tenable scan for target is still underway, check the TIO console manually for results.")
+                logger.warning(
+                    "[!] Tenable scan for target is still underway, check the TIO console manually for results."
+                )
 
         return self.resultsdict

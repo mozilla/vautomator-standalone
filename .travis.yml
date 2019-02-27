@@ -1,0 +1,15 @@
+language: python
+matrix:
+  include:
+  - python: 3.6
+    before_install:
+      - pip install tox
+      - pip install flake8
+    env:
+      - LABEL=docker_unit_tests
+    services:
+      - docker
+    script:
+      - make build
+      - make test-tox
+      - docker run -it vautomator python3 -m pytest ./tests/
