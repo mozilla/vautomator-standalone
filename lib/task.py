@@ -275,7 +275,7 @@ class NessusTask(Task):
             return False
 
     def downloadReport(self, nscan, reportformat="html", style="assets"):
-        report_path = "/app/results/" + self.tasktarget.targetdomain + "/Scan_for_" + self.tasktarget.targetdomain
+        report_path = "/app/results/" + self.tasktarget + "/Scan_for_" + self.tasktarget.targetdomain
 
         if reportformat == "html":
             fmt = ScanExportRequest.FORMAT_HTML
@@ -303,17 +303,17 @@ class NessusTask(Task):
 
     def checkScanStatus(self, nscan):
         # Query Tenable API to check if the scan is finished
-        status = nscan.status(nscan.id)
+        status = nscan.status()
 
-        if status == nscan.STATUS_COMPLETED:
+        if status == Scan.STATUS_COMPLETED:
             return "COMPLETE"
-        elif status == nscan.STATUS_ABORTED:
+        elif status == Scan.STATUS_ABORTED:
             return "ABORTED"
-        elif status == nscan.STATUS_INITIALIZING:
+        elif status == Scan.STATUS_INITIALIZING:
             return "INITIALIZING"
-        elif status == nscan.STATUS_PENDING:
+        elif status == Scan.STATUS_PENDING:
             return "PENDING"
-        elif status == nscan.STATUS_RUNNING:
+        elif status == Scan.STATUS_RUNNING:
             return "RUNNING"
         else:
             logger.error("[-] Something is wrong with Tenable.io scan. Check the TIO console manually.")
