@@ -109,13 +109,13 @@ class Target:
             elif isinstance(one_task, task.NessusTask):
                 nessus_results = one_task.runNessusScan()
                 if nessus_results:
+                    self.resultsdict.update({"nessus": True})
                     epoch_cdate = nessus_results.histories()[0].creation_date
                     cdate = datetime.datetime.fromtimestamp(float(epoch_cdate))
                     # Checking the creation day of the scan to see if it's
                     # older than 15 days
                     if cdate.date() >= (datetime.date.today() - datetime.timedelta(days=15)):
                         logger.info("[+] Tenable.io scan kicked off.")
-                        self.resultsdict.update({"nessus": True})
                         fresh_nessus = nessus_results
 
             elif isinstance(one_task, task.MozillaTLSObservatoryTask):
