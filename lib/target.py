@@ -113,9 +113,7 @@ class Target:
                     cdate = datetime.datetime.fromtimestamp(float(epoch_cdate))
                     # Checking the creation day of the scan to see if it's
                     # older than 15 days
-                    if cdate.date() < (datetime.date.today() - datetime.timedelta(days=15)):
-                        self.resultsdict.update({"nessus": "OLD"})
-                    else:
+                    if cdate.date() >= (datetime.date.today() - datetime.timedelta(days=15)):
                         logger.info("[+] Tenable.io scan kicked off.")
                         self.resultsdict.update({"nessus": True})
                         fresh_nessus = nessus_results
@@ -150,7 +148,7 @@ class Target:
                 return False
 
         # Need to check if the current Nessus scan is complete
-        if self.resultsdict["nessus"] and self.resultsdict["nessus"] != "OLD":
+        if fresh_nessus is not None and self.resultsdict["nessus"] != "NA":
             if task.NessusTask(self.targetname).checkScanStatus(fresh_nessus) == "COMPLETE":
                 task.NessusTask(self.targetname).downloadReport(fresh_nessus)
             else:

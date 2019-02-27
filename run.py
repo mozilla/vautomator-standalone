@@ -5,6 +5,7 @@ import os
 import time
 import logging
 import coloredlogs
+import argparse
 from urllib.parse import urlparse
 from lib import target, task, utils
 
@@ -14,44 +15,136 @@ coloredlogs.install(level='INFO', logger=logger, reconfigure=True,
                     fmt='[%(hostname)s] %(asctime)s %(levelname)-8s %(message)s',
                     datefmt="%Y-%m-%d %I:%M:%S %p %Z")
 
+
 def parseCmdArgs():
 
-    return
+    parser = argparse.ArgumentParser(usage='run.py [options] target', 
+                                     description="Sequentially run a number of\
+                                     tasks to perform a vulnerability assessment on a target.")
+    # Note: These two are not implemented yet
+    argument_group = parser.add_mutually_exclusive_group()
+    argument_group.add_argument('-v', '--verbose', 
+                                action='store_true', 
+                                help="increase tool verbosity",
+                                default=False)
+    argument_group.add_argument('-q', '--quiet',
+                                action='store_true',
+                                help="quiet run, show almost no output",
+                                default=False)
+    
+    # target is a positional argument, must be specified
+    parser.add_argument('target',
+                        help="host to scan - this could be an IP address, FQDN or a hostname")
+    parser.add_argument('-a',
+                        dest='all',
+                        action='store_true',
+                        help="Run ALL tasks on the target",
+                        default=False)                  
+    parser.add_argument('-p',
+                        dest='port_scan',
+                        action='store_true',
+                        help="Run a port scan (nmap) on the target",
+                        default=False)             
+    parser.add_argument('-o',
+                        dest='httpobs_scan',
+                        action='store_true',
+                        help="Run HTTP Observatory scan on the target",
+                        default=False)
+    parser.add_argument('-t',
+                        dest='tlsobs_scan',
+                        action='store_true',
+                        help="Run TLS Observatory scan on the target",
+                        default=False)
+    parser.add_argument('-s',
+                        dest='ssh_scan',
+                        action='store_true',
+                        help="Run ssh_scan on the target",
+                        default=False)
+    parser.add_argument('-d',
+                        dest='direnum_scan',
+                        action='store_true',
+                        help="Run directory enumeration scan on the target",
+                        default=False)
+    parser.add_argument('-n',
+                        dest='nessus_scan',
+                        action='store_true',
+                        help="Run Tenable.io (Nessus) scan on the target",
+                        default=False)
+
+    args = parser.parse_args()
+    return args
 
 
+def setupVA(va_target, arguments):
 
-def setupVA(va_target):
+    if arguments.all:
+        # No smart logic, just add & run all tasks
+        va_target.addTask(task.NessusTask(va_target))
+        va_target.addTask(task.NmapTask(va_target))
+        va_target.addTask(task.SSHScanTask(va_target))
+        va_target.addTask(task.MozillaHTTPObservatoryTask(va_target))
+        va_target.addTask(task.MozillaTLSObservatoryTask(va_target))
+        va_target.addTask(task.DirectoryBruteTask(va_target, tool="dirb"))
+
+        return va_target
 
     # Regardless of the type of target, we will run:
     # 1. Nessus scan
     # 2. Nmap scan
     # Also kicking of Nessus scan as the first task as it takes time
-    va_target.addTask(task.NessusTask(va_target))
-    va_target.addTask(task.NmapTask(va_target))
+    # Note: Passed flags can override these
+    if arguments.port_scan:
+        va_target.addTask(task.NmapTask(va_target))
+        va_target.resultsdict.update({'nmap': False})
+    if arguments.nessus_scan:
+        va_target.addTask(task.NessusTask(va_target))
+        va_target.resultsdict.update({'nessus': False})
+    if arguments.ssh_scan:
+        va_target.addTask(task.SSHScanTask(va_target))
+        va_target.resultsdict.update({'sshscan': False})
     
     if "URL" in va_target.getType():
         # We have a URL, means HTTP Obs, TLS Obs,
         # and directory brute scans are a go
+        # Note: Passed flags can override these
         if va_target.getType() == "FQDN|URL":
             # We can run all tools/tasks
-            va_target.addTask(task.MozillaHTTPObservatoryTask(va_target))
-            va_target.addTask(task.MozillaTLSObservatoryTask(va_target))
-            va_target.addTask(task.DirectoryBruteTask(va_target, tool="dirb"))
+            if arguments.httpobs_scan:
+                va_target.addTask(task.MozillaHTTPObservatoryTask(va_target))
+                va_target.resultsdict.update({'httpobs': False})
+            if arguments.tlsobs_scan:
+                va_target.addTask(task.MozillaTLSObservatoryTask(va_target))
+                va_target.resultsdict.update({'tlsobs': False})
+            if arguments.direnum_scan:
+                va_target.addTask(task.DirectoryBruteTask(va_target, tool="dirb"))
+                va_target.resultsdict.update({'dirbrute': False})
         else:
-            va_target.addTask(task.MozillaTLSObservatoryTask(va_target))
-            va_target.addTask(task.DirectoryBruteTask(va_target, tool="dirb"))
+            if arguments.tlsobs_scan:
+                va_target.addTask(task.MozillaTLSObservatoryTask(va_target))
+                va_target.resultsdict.update({'tlsobs': False})
+            if arguments.direnum_scan:
+                va_target.addTask(task.DirectoryBruteTask(va_target, tool="dirb"))
+                va_target.resultsdict.update({'dirbrute': False})
             # HTTP Observatory does not like IPs as a target, skipping
-            va_target.resultsdict.update({'httpobs': "PASS"})
     elif va_target.getType() == "IPv4":
-        va_target.addTask(task.MozillaTLSObservatoryTask(va_target))
-        va_target.addTask(task.DirectoryBruteTask(va_target, tool="dirb"))
+        if arguments.tlsobs_scan:
+            va_target.addTask(task.MozillaTLSObservatoryTask(va_target))
+            va_target.resultsdict.update({'tlsobs': False})
+        if arguments.direnum_scan:
+            va_target.addTask(task.DirectoryBruteTask(va_target, tool="dirb"))
+            va_target.resultsdict.update({'dirbrute': False})
         # Again, HTTP Observatory does not like IPs as a target, skipping
-        va_target.resultsdict.update({'httpobs': "PASS"})
     else:
         # FQDN, we can run all tools/tasks
-        va_target.addTask(task.MozillaHTTPObservatoryTask(va_target))
-        va_target.addTask(task.MozillaTLSObservatoryTask(va_target))
-        va_target.addTask(task.DirectoryBruteTask(va_target, tool="dirb"))
+        if arguments.httpobs_scan:
+            va_target.addTask(task.MozillaHTTPObservatoryTask(va_target))
+            va_target.resultsdict.update({'httpobs': False})
+        if arguments.tlsobs_scan:
+            va_target.addTask(task.MozillaTLSObservatoryTask(va_target))
+            va_target.resultsdict.update({'tlsobs': False})
+        if arguments.direnum_scan:
+            va_target.addTask(task.DirectoryBruteTask(va_target, tool="dirb"))
+            va_target.resultsdict.update({'dirbrute': False})
     
     return va_target
 
@@ -64,8 +157,8 @@ def showScanSummary(result_dictionary):
     print("\n====== SCAN SUMMARY ======")
     for one_task, status in result_dictionary.items():
         if status:
-            if status == "PASS":
-                logger.warning("[!] [ :| ] " + one_task + " scan skipped as not applicable to the target.")
+            if status == "NA":
+                logger.warning("[!] [ :| ] " + one_task + " scan skipped as not specified.")
             else:
                 logger.info("[+] [\o/] " + one_task + " scan completed successfully!")
         else:
@@ -75,7 +168,7 @@ def showScanSummary(result_dictionary):
 
 
 def runVA(scan_with_tasks, outpath):
-    logger.info("[+] Running all the scans now. This may take a while...")
+    logger.info("[+] Running the scans now. This may take a while...")
     results = scan_with_tasks.runTasks()
     # results here is a dict
     time.sleep(1)
@@ -91,10 +184,18 @@ def runVA(scan_with_tasks, outpath):
 
 def main():
     
-    results = {'nmap': False, 'nessus': False, 'tlsobs': False, 'httpobs': False, 'sshscan': False, 'dirbrute': False}
-    destination = sys.argv[1]
+    scan_success = {
+        'nmap': "NA",
+        'nessus': "NA",
+        'tlsobs': "NA",
+        'httpobs': "NA", 
+        'sshscan': "NA", 
+        'dirbrute': "NA"
+    }
+    tool_arguments = parseCmdArgs()
+    destination = tool_arguments.target
     output_path = "/app/results/" + destination + "/"
-    va_target = target.Target(destination, results)
+    va_target = target.Target(destination, scan_success)
 
     if va_target.isValid():
         # We have a valid target, what is it?
@@ -111,7 +212,7 @@ def main():
     except Exception:
         os.mkdir(output_path)
     
-    va_scan = setupVA(va_target)
+    va_scan = setupVA(va_target, tool_arguments)
     runVA(va_scan, output_path)
 
 

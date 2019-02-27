@@ -96,7 +96,6 @@ class NmapTask(Task):
 
         elif self.portscan_type == "udp":
             nmap_arguments = "-v -Pn -sU -sV --open -T4 --system-dns"
-            isSudo = True
             results = nm.scan(self.tasktarget.targetdomain, ports=udp_ports, arguments=nmap_arguments, sudo=isSudo)
 
         else:
@@ -184,8 +183,7 @@ class NmapTask(Task):
                 + udp_ports
                 + " --open -T4 --system-dns"
             )
-            isSudo = True
-            results = nm.scan(self.tasktarget.targetdomain, arguments=nmap_arguments, sudo=False)
+            results = nm.scan(self.tasktarget.targetdomain, arguments=nmap_arguments, sudo=isSudo)
 
         self.checkForSSH(nm)
 
