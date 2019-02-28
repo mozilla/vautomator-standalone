@@ -114,9 +114,12 @@ class Target:
                     cdate = datetime.datetime.fromtimestamp(float(epoch_cdate))
                     # Checking the creation day of the scan to see if it's
                     # older than 15 days
-                    if cdate.date() >= (datetime.date.today() - datetime.timedelta(days=15)):
+                    print(cdate.date())
+                    print(datetime.date.today() - datetime.timedelta(days=15))
+                    if cdate.date() < (datetime.date.today() - datetime.timedelta(days=15)):
                         logger.info("[+] Tenable.io scan kicked off.")
                         fresh_nessus = nessus_results
+                        nessus_task = one_task
 
             elif isinstance(one_task, task.MozillaTLSObservatoryTask):
                 tlsobs_results = one_task.runTLSObsScan()
@@ -149,8 +152,8 @@ class Target:
 
         # Need to check if the current Nessus scan is complete
         if fresh_nessus is not None and self.resultsdict["nessus"] != "NA":
-            if task.NessusTask(self.targetname).checkScanStatus(fresh_nessus) == "COMPLETE":
-                task.NessusTask(self.targetname).downloadReport(fresh_nessus)
+            if nessus_task.checkScanStatus(fresh_nessus) == "COMPLETE":
+                nessus_task.downloadReport(fresh_nessus)
             else:
                 logger.warning(
                     "[!] Tenable scan for target is still underway, check the TIO console manually for results."
