@@ -273,7 +273,6 @@ class NessusTask(Task):
             return False
 
     def downloadReport(self, nscan, reportformat="html", style="assets"):
-        print(self.tasktarget.targetdomain)
         report_path = ("/app/results/" + (self.tasktarget).targetdomain
                        + "/Scan_for_" + (self.tasktarget).targetdomain
                        + "." + reportformat)
