@@ -159,6 +159,8 @@ def showScanSummary(result_dictionary):
         if status:
             if status == "NA":
                 logger.warning("[!] [ :| ] " + one_task + " scan skipped as not specified.")
+            elif status == "TIMEOUT":
+                logger.warning("[!] [ :| ] " + one_task + " timed out and was killed! Run manually.")
             else:
                 logger.info("[+] [\o/] " + one_task + " scan completed successfully!")
         else:
@@ -167,17 +169,19 @@ def showScanSummary(result_dictionary):
     print("====== END OF SCAN =======\n")
 
 
-def runVA(scan_with_tasks, outpath):
+def runVA(scan_with_tasks, outpath, compress_results):
     logger.info("[+] Running the scans now. This may take a while...")
     results = scan_with_tasks.runTasks()
     # results here is a dict
     time.sleep(1)
     # Return code check is a bit hacky,
     # basically we are ignoring warnings from tar
-    if utils.package_results(outpath).returncode is not 127:
-        logger.info("[+] All done. Tool output from the scan can be found at " + outpath)
-    else:
-        logger.warning("[!] There was a problem compressing tool output. Check " + outpath + " manually.")
+
+    if compress_results:
+        if utils.package_results(outpath).returncode is not 127:
+            logger.info("[+] All done. Tool output from the scan can be found at " + outpath)
+        else:
+            logger.warning("[!] There was a problem compressing tool output. Check " + outpath + " manually.")
     time.sleep(1)
     showScanSummary(results)
 
@@ -192,6 +196,7 @@ def main():
         'sshscan': "NA", 
         'dirbrute': "NA"
     }
+    compress_results = True
     tool_arguments = parseCmdArgs()
     destination = tool_arguments.target
     output_path = "/app/results/" + destination + "/"
@@ -213,7 +218,9 @@ def main():
         os.mkdir(output_path)
     
     va_scan = setupVA(va_target, tool_arguments)
-    runVA(va_scan, output_path)
+    if not tool_arguments.all:
+        compress_results = False
+    runVA(va_scan, output_path, compress_results)
 
 
 if __name__ == "__main__":

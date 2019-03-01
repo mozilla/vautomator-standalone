@@ -250,23 +250,38 @@ class NessusTask(Task):
             # Need to check if a recent scan was fired recently
             scan_name = "VA for " + self.tasktarget.targetdomain
             # We will check with both host IP and FQDN
-            activities = self.client.scan_helper.activities(targets=self.tasktarget.targetdomain, date_range=15)
-            if len(activities) > 0:
+            recent_activities = self.client.scan_helper.activities(targets=self.tasktarget.targetdomain, date_range=15)
+            all_activities = self.client.scan_helper.activities(targets=self.tasktarget.targetdomain)
+            if len(recent_activities) > 0:
                 logger.warning("[!] The target has recently been scanned by Tenable.io, retrieving results...")
                 old_nscans = self.client.scan_helper.scans(name=scan_name)
-                for old in old_nscans:
+                for old in reversed(old_nscans):
                     if old.status() == Scan.STATUS_COMPLETED:
                         self.downloadReport(old)
                         break
                 return old
-            else:
-                # This target was not scanned before, scan it
-                # We don't want this blocking, so don't wait
+            elif len(recent_activities) == 0 and len(all_activities) > 0:
+                # The target was scanned before, but more than 15 days ago
+                logger.info("[+] The target has NOT recently been scanned by Tenable.io, "
+                            "will re-run a scan.")
+                re_nscan = self.client.scan_helper.create(
+                    name=scan_name, text_targets=self.tasktarget.targetdomain, template="basic"
+                )
+                re_nscan.launch(wait=False)
+                return re_nscan
+                
+            elif len(all_activities) == 0:
+                # This target was not scanned before,
+                # so scan it. We don't want this blocking, 
+                # so don't wait
+                logger.info("[+] New target for Tenable.io, kicking off scan.")
                 new_nscan = self.client.scan_helper.create(
                     name=scan_name, text_targets=self.tasktarget.targetdomain, template="basic"
                 )
                 new_nscan.launch(wait=False)
                 return new_nscan
+            else:
+                return False
 
         except TenableIOApiException as TIOException:
             logger.error("[-] Tenable.io scan failed: ".format(TIOException))
@@ -408,6 +423,7 @@ class DirectoryBruteTask(Task):
             except RuntimeError:
                 p.kill()
                 logger.warning("[!] dirb timed out, process killed")
+                return False
 
             return p
         elif self.toolToRun == "gobuster":

@@ -110,14 +110,11 @@ class Target:
                 nessus_results = one_task.runNessusScan()
                 if nessus_results:
                     self.resultsdict.update({"nessus": True})
-                    epoch_cdate = nessus_results.histories()[0].creation_date
+                    epoch_cdate = nessus_results.last_history().creation_date
                     cdate = datetime.datetime.fromtimestamp(float(epoch_cdate))
                     # Checking the creation day of the scan to see if it's
-                    # older than 15 days
-                    print(cdate.date())
-                    print(datetime.date.today() - datetime.timedelta(days=15))
-                    if cdate.date() < (datetime.date.today() - datetime.timedelta(days=15)):
-                        logger.info("[+] Tenable.io scan kicked off.")
+                    # older than 15 days, if older this is a new scan
+                    if (datetime.date.today() - cdate.date() < datetime.timedelta(days=15)):
                         fresh_nessus = nessus_results
                         nessus_task = one_task
 
@@ -145,6 +142,8 @@ class Target:
                 if dirbrute_results and dirbrute_results.returncode == 0:
                     logger.info("[+] Directory brute scan successfully ran.")
                     self.resultsdict.update({"dirbrute": True})
+                else:
+                    self.resultsdict.update({"dirbrute": "TIMEOUT"})
 
             else:
                 logger.error("[-] No or unidentified task specified!")
