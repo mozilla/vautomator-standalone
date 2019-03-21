@@ -1,6 +1,7 @@
 import os
 import logging
 import coloredlogs
+import googlesearch
 import json
 import nmap
 import subprocess
@@ -43,6 +44,34 @@ class Task:
             if time.time() >= end:
                 raise RuntimeError("Process timed out")
             time.sleep(interval)
+
+
+class WebSearchTask(Task):
+    def __init__(self, target_obj):
+        super().__init__(target_obj)
+
+    def runWebSearchScan(self):
+        # Limit max amount of results
+        result_nr_max = 15
+        # Search for security hits but without the host domain (ie "not their pages")
+        search_results = []
+        logger.info("[+] Running WebSearch scan...")
+        for m in googlesearch.search(query="{} security -site:{}".format(self.tasktarget.targetdomain), num=15):
+            search_results.append(m)
+            if len(search_results) >= result_nr_max:
+                break
+
+        if len(search_results) > 0:
+            try:
+                with open("/app/results/" + self.tasktarget.targetdomain + "/" + "websearch.txt", "w+") as fd:
+                    for i in search_results:
+                        fd.write(i + "\n")
+                return True
+            except Exception:
+                logger.error("[-] Could not open file for websearch output!")
+                return False
+        else:
+            logger.error("[-] No results from websearch!")
 
 
 class NmapTask(Task):
@@ -192,7 +221,7 @@ class NmapTask(Task):
         if results:
             try:
                 nmap_output = open("/app/results/" + self.tasktarget.targetdomain + "/" + "nmap_tcp.json", "w+")
-                nmap_output.write(json.dumps(results))
+                nmap_output.write(json.dumps(results, indent=4, sort_keys=True))
                 return True
             except Exception:
                 logger.error("[-] Could not open file for nmap output!")
