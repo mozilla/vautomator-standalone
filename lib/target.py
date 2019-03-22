@@ -133,6 +133,12 @@ class Target:
                     logger.info("[+] HTTP Observatory scan successfully ran.")
                     self.resultsdict.update({"httpobs": True})
 
+            elif isinstance(one_task, task.WebSearchTask):
+                websearch_results = one_task.runWebSearchScan()
+                if websearch_results:
+                    logger.info("[+] WebSearch scan successfully ran.")
+                    self.resultsdict.update({"websearch": True})
+
             elif isinstance(one_task, task.SSHScanTask):
                 sshscan_results = one_task.runSSHScan()
                 if sshscan_results and sshscan_results.returncode == 0:
@@ -146,7 +152,7 @@ class Target:
                     self.resultsdict.update({"dirbrute": True})
 
             else:
-                logger.error("[-] No or unidentified task specified!")
+                logger.error("[-] No or unidentified task specified! Task was: {}".format(one_task))
                 return False
 
         # Need to check if the current Nessus scan is complete

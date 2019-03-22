@@ -10,9 +10,13 @@ from lib import target, task, utils
 
 # Logging in UTC
 logger = logging.getLogger(__name__)
-coloredlogs.install(level='INFO', logger=logger, reconfigure=True,
-                    fmt='[%(hostname)s] %(asctime)s %(levelname)-8s %(message)s',
-                    datefmt="%Y-%m-%d %I:%M:%S %p %Z")
+coloredlogs.install(
+    level="INFO",
+    logger=logger,
+    reconfigure=True,
+    fmt="[%(hostname)s] %(asctime)s %(levelname)-8s %(message)s",
+    datefmt="%Y-%m-%d %I:%M:%S %p %Z",
+)
 
 
 def setupVA(va_target):
@@ -23,12 +27,13 @@ def setupVA(va_target):
     # Also kicking of Nessus scan as the first task as it takes time
     va_target.addTask(task.NessusTask(va_target))
     va_target.addTask(task.NmapTask(va_target))
-    
+
     if "URL" in va_target.getType():
         # We have a URL, means HTTP Obs, TLS Obs,
         # and directory brute scans are a go
         if va_target.getType() == "FQDN|URL":
             # We can run all tools/tasks
+            va_target.addTask(task.WebSearchTask(va_target))
             va_target.addTask(task.MozillaHTTPObservatoryTask(va_target))
             va_target.addTask(task.MozillaTLSObservatoryTask(va_target))
             va_target.addTask(task.DirectoryBruteTask(va_target, tool="dirb"))
@@ -36,25 +41,26 @@ def setupVA(va_target):
             va_target.addTask(task.MozillaTLSObservatoryTask(va_target))
             va_target.addTask(task.DirectoryBruteTask(va_target, tool="dirb"))
             # HTTP Observatory does not like IPs as a target, skipping
-            va_target.resultsdict.update({'httpobs': "PASS"})
+            va_target.resultsdict.update({"httpobs": "PASS"})
+            va_target.resultsdict.update({"websearch": "PASS"})
     elif va_target.getType() == "IPv4":
         va_target.addTask(task.MozillaTLSObservatoryTask(va_target))
         va_target.addTask(task.DirectoryBruteTask(va_target, tool="dirb"))
         # Again, HTTP Observatory does not like IPs as a target, skipping
-        va_target.resultsdict.update({'httpobs': "PASS"})
+        va_target.resultsdict.update({"httpobs": "PASS"})
     else:
         # FQDN, we can run all tools/tasks
+        va_target.addTask(task.WebSearchTask(va_target))
         va_target.addTask(task.MozillaHTTPObservatoryTask(va_target))
         va_target.addTask(task.MozillaTLSObservatoryTask(va_target))
         va_target.addTask(task.DirectoryBruteTask(va_target, tool="dirb"))
-    
+
     return va_target
 
 
 def showScanSummary(result_dictionary):
 
-    coloredlogs.install(level='INFO', logger=logger, reconfigure=True,
-                        fmt='%(levelname)-10s %(message)s')
+    coloredlogs.install(level="INFO", logger=logger, reconfigure=True, fmt="%(levelname)-10s %(message)s")
 
     print("\n====== SCAN SUMMARY ======")
     for one_task, status in result_dictionary.items():
@@ -65,7 +71,7 @@ def showScanSummary(result_dictionary):
                 logger.info("[+] [\o/] " + one_task + " scan completed successfully!")
         else:
             logger.error("[-] [ :( ] " + one_task + " scan failed to run. Please investigate or run manually.")
-    
+
     print("====== END OF SCAN =======\n")
 
 
@@ -85,8 +91,8 @@ def runVA(scan_with_tasks, outpath):
 
 
 def main():
-    
-    results = {'nmap': False, 'nessus': False, 'tlsobs': False, 'httpobs': False, 'sshscan': False, 'dirbrute': False}
+
+    results = {"nmap": False, "nessus": False, "tlsobs": False, "httpobs": False, "sshscan": False, "dirbrute": False}
     destination = sys.argv[1]
     output_path = "/app/results/" + destination + "/"
     va_target = target.Target(destination, results)
@@ -105,7 +111,7 @@ def main():
         os.stat(output_path)
     except Exception:
         os.mkdir(output_path)
-    
+
     va_scan = setupVA(va_target)
     runVA(va_scan, output_path)
 
