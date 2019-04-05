@@ -11,9 +11,13 @@ from lib import target, task, utils
 
 # Logging in UTC
 logger = logging.getLogger(__name__)
-coloredlogs.install(level='INFO', logger=logger, reconfigure=True,
-                    fmt='[%(hostname)s] %(asctime)s %(levelname)-8s %(message)s',
-                    datefmt="%Y-%m-%d %I:%M:%S %p %Z")
+coloredlogs.install(
+    level="INFO",
+    logger=logger,
+    reconfigure=True,
+    fmt="[%(hostname)s] %(asctime)s %(levelname)-8s %(message)s",
+    datefmt="%Y-%m-%d %I:%M:%S %p %Z",
+)
 
 
 def parseCmdArgs():
@@ -126,6 +130,8 @@ def setupVA(va_target, arguments):
                 va_target.addTask(task.DirectoryBruteTask(va_target, tool="dirb"))
                 va_target.resultsdict.update({'dirbrute': False})
             # HTTP Observatory does not like IPs as a target, skipping
+            va_target.resultsdict.update({"httpobs": "PASS"})
+            va_target.resultsdict.update({"websearch": "PASS"})
     elif va_target.getType() == "IPv4":
         if arguments.tlsobs_scan:
             va_target.addTask(task.MozillaTLSObservatoryTask(va_target))
@@ -151,8 +157,7 @@ def setupVA(va_target, arguments):
 
 def showScanSummary(result_dictionary):
 
-    coloredlogs.install(level='INFO', logger=logger, reconfigure=True,
-                        fmt='%(levelname)-10s %(message)s')
+    coloredlogs.install(level="INFO", logger=logger, reconfigure=True, fmt="%(levelname)-10s %(message)s")
 
     print("\n====== SCAN SUMMARY ======")
     for one_task, status in result_dictionary.items():
@@ -165,7 +170,7 @@ def showScanSummary(result_dictionary):
                 logger.info("[+] [\o/] " + one_task + " scan completed successfully!")
         else:
             logger.error("[-] [ :( ] " + one_task + " scan failed to run. Please investigate or run manually.")
-    
+
     print("====== END OF SCAN =======\n")
 
 
