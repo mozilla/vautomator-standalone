@@ -41,6 +41,10 @@ sshscan:
 direnum:
 	docker run -v ${PWD}/results:/app/results -it vautomator:latest ./run.py -d $(TARGET)
 
+.PHONY: websearch
+websearch:
+	docker run -v ${PWD}/results:/app/results -it vautomator:latest ./run.py -w $(TARGET)
+
 .PHONY: test
 test:
 	python -m pytest tests/

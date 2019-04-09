@@ -13,7 +13,7 @@ def sanitise_shell_command(command):
 
 def package_results(output_dir):
     # Do reporting (take all the output from
-    # the prior runs, zip it up
+    # the prior runs, zip it up)
     tarfile = output_dir.split("/")
     cmd = (
         "tar --warning=no-all -zcf "

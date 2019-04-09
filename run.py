@@ -74,6 +74,11 @@ def parseCmdArgs():
                         action='store_true',
                         help="Run Tenable.io (Nessus) scan on the target",
                         default=False)
+    parser.add_argument('-w',
+                        dest='web_search',
+                        action='store_true',
+                        help="Search for this target on the web for interesting content",
+                        default=False)
 
     args = parser.parse_args()
     return args
@@ -88,6 +93,7 @@ def setupVA(va_target, arguments):
         va_target.addTask(task.SSHScanTask(va_target))
         va_target.addTask(task.MozillaHTTPObservatoryTask(va_target))
         va_target.addTask(task.MozillaTLSObservatoryTask(va_target))
+        va_target.addTask(task.WebSearchTask(va_target))
         va_target.addTask(task.DirectoryBruteTask(va_target, tool="dirb"))
 
         return va_target
@@ -106,6 +112,9 @@ def setupVA(va_target, arguments):
     if arguments.ssh_scan:
         va_target.addTask(task.SSHScanTask(va_target))
         va_target.resultsdict.update({'sshscan': False})
+    if arguments.web_search:
+        va_target.addTask(task.WebSearchTask(va_target))
+        va_target.resultsdict.update({'websearch': False})
     
     if "URL" in va_target.getType():
         # We have a URL, means HTTP Obs, TLS Obs,
@@ -122,6 +131,9 @@ def setupVA(va_target, arguments):
             if arguments.direnum_scan:
                 va_target.addTask(task.DirectoryBruteTask(va_target, tool="dirb"))
                 va_target.resultsdict.update({'dirbrute': False})
+            if arguments.web_search:
+                va_target.addTask(task.WebSearchTask(va_target))
+                va_target.resultsdict.update({'websearch': False})
         else:
             if arguments.tlsobs_scan:
                 va_target.addTask(task.MozillaTLSObservatoryTask(va_target))
@@ -131,6 +143,7 @@ def setupVA(va_target, arguments):
                 va_target.resultsdict.update({'dirbrute': False})
             # HTTP Observatory does not like IPs as a target, skipping
             va_target.resultsdict.update({"httpobs": "PASS"})
+            # Also skipping web search for the IP address targets
             va_target.resultsdict.update({"websearch": "PASS"})
     elif va_target.getType() == "IPv4":
         if arguments.tlsobs_scan:
@@ -151,6 +164,9 @@ def setupVA(va_target, arguments):
         if arguments.direnum_scan:
             va_target.addTask(task.DirectoryBruteTask(va_target, tool="dirb"))
             va_target.resultsdict.update({'dirbrute': False})
+        if arguments.web_search:
+            va_target.addTask(task.WebSearchTask(va_target))
+            va_target.resultsdict.update({'websearch': False})
     
     return va_target
 
@@ -165,7 +181,7 @@ def showScanSummary(result_dictionary):
             if status == "NA":
                 logger.warning("[!] [ :| ] " + one_task + " scan skipped as not specified.")
             elif status == "TIMEOUT":
-                logger.warning("[!] [ :| ] " + one_task + " timed out and was killed! Run manually.")
+                logger.warning("[!] [ :| ] " + one_task + " timed out and was killed! Run manually if you like.")
             else:
                 logger.info("[+] [\o/] " + one_task + " scan completed successfully!")
         else:
@@ -199,6 +215,7 @@ def main():
         'tlsobs': "NA",
         'httpobs': "NA", 
         'sshscan': "NA", 
+        'websearch': 'NA',
         'dirbrute': "NA"
     }
     compress_results = True
