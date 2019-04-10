@@ -103,7 +103,7 @@ def main():
         'nessus': False,
         'tlsobs': False,
         'httpobs': False,
-        'sshscan': False,
+        'sshscan': "PASS",  # Default is PASS, as it only gets updated to True as a part of nmap scan task
         'websearch': False,
         'dirbrute': False
     }

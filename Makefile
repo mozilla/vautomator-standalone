@@ -13,6 +13,10 @@ build: Dockerfile docker-compose.yml
 force-build: Dockerfile docker-compose.yml
 	docker-compose build --no-cache vautomator
 
+.PHONY: scan
+scan:
+	docker run -v ${PWD}/results:/app/results -it vautomator:latest ./run.py $(TARGET)
+
 .PHONY: test
 test:
 	python -m pytest tests/
