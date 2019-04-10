@@ -13,38 +13,6 @@ build: Dockerfile docker-compose.yml
 force-build: Dockerfile docker-compose.yml
 	docker-compose build --no-cache vautomator
 
-.PHONY: fullscan
-fullscan:
-	docker run -v ${PWD}/results:/app/results -it vautomator:latest ./run.py -a $(TARGET)
-
-.PHONY: portscan
-portscan:
-	docker run -v ${PWD}/results:/app/results -it vautomator:latest ./run.py -p $(TARGET)
-
-.PHONY: nessusscan
-nessusscan:
-	docker run -v ${PWD}/results:/app/results -it vautomator:latest ./run.py -n $(TARGET)
-
-.PHONY: observatory
-observatory:
-	docker run -v ${PWD}/results:/app/results -it vautomator:latest ./run.py -o $(TARGET)
-
-.PHONY: tlsobs
-tlsobs:
-	docker run -v ${PWD}/results:/app/results -it vautomator:latest ./run.py -t $(TARGET)
-
-.PHONY: sshscan
-sshscan:
-	docker run -v ${PWD}/results:/app/results -it vautomator:latest ./run.py -s $(TARGET)
-
-.PHONY: direnum
-direnum:
-	docker run -v ${PWD}/results:/app/results -it vautomator:latest ./run.py -d $(TARGET)
-
-.PHONY: websearch
-websearch:
-	docker run -v ${PWD}/results:/app/results -it vautomator:latest ./run.py -w $(TARGET)
-
 .PHONY: test
 test:
 	python -m pytest tests/

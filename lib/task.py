@@ -220,7 +220,7 @@ class NmapTask(Task):
 
         if results:
             try:
-                nmap_output = open("/app/results/" + self.tasktarget.targetdomain + "/" + "nmap_tcp.json", "w+")
+                nmap_output = open("/app/results/" + self.tasktarget.targetdomain + "/" + "nmap.json", "w+")
                 nmap_output.write(json.dumps(results, indent=4, sort_keys=True))
                 return True
             except Exception:
