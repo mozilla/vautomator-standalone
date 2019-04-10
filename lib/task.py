@@ -127,7 +127,6 @@ class NmapTask(Task):
 
         elif self.portscan_type == "udp":
             nmap_arguments = "-v -Pn -sU -sV --open -T4 --system-dns"
-            isSudo = True
             results = nm.scan(self.tasktarget.targetdomain, ports=udp_ports, arguments=nmap_arguments, sudo=isSudo)
 
         else:
@@ -215,14 +214,13 @@ class NmapTask(Task):
                 + udp_ports
                 + " --open -T4 --system-dns"
             )
-            isSudo = True
-            results = nm.scan(self.tasktarget.targetdomain, arguments=nmap_arguments, sudo=False)
+            results = nm.scan(self.tasktarget.targetdomain, arguments=nmap_arguments, sudo=isSudo)
 
         self.checkForSSH(nm)
 
         if results:
             try:
-                nmap_output = open("/app/results/" + self.tasktarget.targetdomain + "/" + "nmap_tcp.json", "w+")
+                nmap_output = open("/app/results/" + self.tasktarget.targetdomain + "/" + "nmap.json", "w+")
                 nmap_output.write(json.dumps(results, indent=4, sort_keys=True))
                 return True
             except Exception:
@@ -283,30 +281,47 @@ class NessusTask(Task):
             # Need to check if a recent scan was fired recently
             scan_name = "VA for " + self.tasktarget.targetdomain
             # We will check with both host IP and FQDN
-            activities = self.client.scan_helper.activities(targets=self.tasktarget.targetdomain, date_range=15)
-            if len(activities) > 0:
+            recent_activities = self.client.scan_helper.activities(targets=self.tasktarget.targetdomain, date_range=15)
+            all_activities = self.client.scan_helper.activities(targets=self.tasktarget.targetdomain)
+            if len(recent_activities) > 0:
                 logger.warning("[!] The target has recently been scanned by Tenable.io, retrieving results...")
                 old_nscans = self.client.scan_helper.scans(name=scan_name)
-                for old in old_nscans:
+                for old in reversed(old_nscans):
                     if old.status() == Scan.STATUS_COMPLETED:
                         self.downloadReport(old)
                         break
                 return old
-            else:
-                # This target was not scanned before, scan it
-                # We don't want this blocking, so don't wait
+            elif len(recent_activities) == 0 and len(all_activities) > 0:
+                # The target was scanned before, but more than 15 days ago
+                logger.info("[+] The target has NOT recently been scanned by Tenable.io, "
+                            "will re-run a scan.")
+                re_nscan = self.client.scan_helper.create(
+                    name=scan_name, text_targets=self.tasktarget.targetdomain, template="basic"
+                )
+                re_nscan.launch(wait=False)
+                return re_nscan
+                
+            elif len(all_activities) == 0:
+                # This target was not scanned before,
+                # so scan it. We don't want this blocking, 
+                # so don't wait
+                logger.info("[+] New target for Tenable.io, kicking off scan.")
                 new_nscan = self.client.scan_helper.create(
                     name=scan_name, text_targets=self.tasktarget.targetdomain, template="basic"
                 )
                 new_nscan.launch(wait=False)
                 return new_nscan
+            else:
+                return False
 
         except TenableIOApiException as TIOException:
             logger.error("[-] Tenable.io scan failed: ".format(TIOException))
             return False
 
     def downloadReport(self, nscan, reportformat="html", style="assets"):
-        report_path = "/app/results/" + self.tasktarget.targetdomain + "/Scan_for_" + self.tasktarget.targetdomain
+        report_path = ("/app/results/" + (self.tasktarget).targetdomain
+                       + "/Scan_for_" + (self.tasktarget).targetdomain
+                       + "." + reportformat)
 
         if reportformat == "html":
             fmt = ScanExportRequest.FORMAT_HTML
@@ -334,17 +349,17 @@ class NessusTask(Task):
 
     def checkScanStatus(self, nscan):
         # Query Tenable API to check if the scan is finished
-        status = nscan.status(nscan.id)
+        status = nscan.status()
 
-        if status == nscan.STATUS_COMPLETED:
+        if status == Scan.STATUS_COMPLETED:
             return "COMPLETE"
-        elif status == nscan.STATUS_ABORTED:
+        elif status == Scan.STATUS_ABORTED:
             return "ABORTED"
-        elif status == nscan.STATUS_INITIALIZING:
+        elif status == Scan.STATUS_INITIALIZING:
             return "INITIALIZING"
-        elif status == nscan.STATUS_PENDING:
+        elif status == Scan.STATUS_PENDING:
             return "PENDING"
-        elif status == nscan.STATUS_RUNNING:
+        elif status == Scan.STATUS_RUNNING:
             return "RUNNING"
         else:
             logger.error("[-] Something is wrong with Tenable.io scan. Check the TIO console manually.")
@@ -439,6 +454,7 @@ class DirectoryBruteTask(Task):
             except RuntimeError:
                 p.kill()
                 logger.warning("[!] dirb timed out, process killed")
+                return False
 
             return p
         elif self.toolToRun == "gobuster":

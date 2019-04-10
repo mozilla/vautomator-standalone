@@ -109,16 +109,14 @@ class Target:
             elif isinstance(one_task, task.NessusTask):
                 nessus_results = one_task.runNessusScan()
                 if nessus_results:
-                    epoch_cdate = nessus_results.histories()[0].creation_date
+                    self.resultsdict.update({"nessus": True})
+                    epoch_cdate = nessus_results.last_history().creation_date
                     cdate = datetime.datetime.fromtimestamp(float(epoch_cdate))
                     # Checking the creation day of the scan to see if it's
-                    # older than 15 days
-                    if cdate.date() < (datetime.date.today() - datetime.timedelta(days=15)):
-                        self.resultsdict.update({"nessus": "OLD"})
-                    else:
-                        logger.info("[+] Tenable.io scan kicked off.")
-                        self.resultsdict.update({"nessus": True})
+                    # older than 15 days, if older this is a new scan
+                    if (datetime.date.today() - cdate.date() < datetime.timedelta(days=15)):
                         fresh_nessus = nessus_results
+                        nessus_task = one_task
 
             elif isinstance(one_task, task.MozillaTLSObservatoryTask):
                 tlsobs_results = one_task.runTLSObsScan()
@@ -150,15 +148,17 @@ class Target:
                 if dirbrute_results and dirbrute_results.returncode == 0:
                     logger.info("[+] Directory brute scan successfully ran.")
                     self.resultsdict.update({"dirbrute": True})
+                else:
+                    self.resultsdict.update({"dirbrute": "TIMEOUT"})
 
             else:
                 logger.error("[-] No or unidentified task specified! Task was: {}".format(one_task))
                 return False
 
         # Need to check if the current Nessus scan is complete
-        if self.resultsdict["nessus"] and self.resultsdict["nessus"] != "OLD":
-            if task.NessusTask(self.targetname).checkScanStatus(fresh_nessus) == "COMPLETE":
-                task.NessusTask(self.targetname).downloadReport(fresh_nessus)
+        if fresh_nessus is not None and self.resultsdict["nessus"] != "NA":
+            if nessus_task.checkScanStatus(fresh_nessus) == "COMPLETE":
+                nessus_task.downloadReport(fresh_nessus)
             else:
                 logger.warning(
                     "[!] Tenable scan for target is still underway, check the TIO console manually for results."

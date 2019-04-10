@@ -5,6 +5,7 @@ import os
 import time
 import logging
 import coloredlogs
+import argparse
 from urllib.parse import urlparse
 from lib import target, task, utils
 
@@ -27,34 +28,36 @@ def setupVA(va_target):
     # Also kicking of Nessus scan as the first task as it takes time
     va_target.addTask(task.NessusTask(va_target))
     va_target.addTask(task.NmapTask(va_target))
-
+    
     if "URL" in va_target.getType():
         # We have a URL, means HTTP Obs, TLS Obs,
         # and directory brute scans are a go
         if va_target.getType() == "FQDN|URL":
             # We can run all tools/tasks
-            va_target.addTask(task.WebSearchTask(va_target))
             va_target.addTask(task.MozillaHTTPObservatoryTask(va_target))
             va_target.addTask(task.MozillaTLSObservatoryTask(va_target))
             va_target.addTask(task.DirectoryBruteTask(va_target, tool="dirb"))
+            va_target.addTask(task.WebSearchTask(va_target))
         else:
             va_target.addTask(task.MozillaTLSObservatoryTask(va_target))
             va_target.addTask(task.DirectoryBruteTask(va_target, tool="dirb"))
             # HTTP Observatory does not like IPs as a target, skipping
             va_target.resultsdict.update({"httpobs": "PASS"})
+            # Also skipping web search for the IP address targets
             va_target.resultsdict.update({"websearch": "PASS"})
     elif va_target.getType() == "IPv4":
         va_target.addTask(task.MozillaTLSObservatoryTask(va_target))
         va_target.addTask(task.DirectoryBruteTask(va_target, tool="dirb"))
         # Again, HTTP Observatory does not like IPs as a target, skipping
         va_target.resultsdict.update({"httpobs": "PASS"})
+        va_target.resultsdict.update({"websearch": "PASS"})
     else:
         # FQDN, we can run all tools/tasks
-        va_target.addTask(task.WebSearchTask(va_target))
         va_target.addTask(task.MozillaHTTPObservatoryTask(va_target))
         va_target.addTask(task.MozillaTLSObservatoryTask(va_target))
         va_target.addTask(task.DirectoryBruteTask(va_target, tool="dirb"))
-
+        va_target.addTask(task.WebSearchTask(va_target))
+    
     return va_target
 
 
@@ -67,6 +70,8 @@ def showScanSummary(result_dictionary):
         if status:
             if status == "PASS":
                 logger.warning("[!] [ :| ] " + one_task + " scan skipped as not applicable to the target.")
+            elif status == "TIMEOUT":
+                logger.warning("[!] [ :| ] " + one_task + " timed out and was killed! Run manually if you like.")
             else:
                 logger.info("[+] [\o/] " + one_task + " scan completed successfully!")
         else:
@@ -82,6 +87,7 @@ def runVA(scan_with_tasks, outpath):
     time.sleep(1)
     # Return code check is a bit hacky,
     # basically we are ignoring warnings from tar
+
     if utils.package_results(outpath).returncode is not 127:
         logger.info("[+] All done. Tool output from the scan can be found at " + outpath)
     else:
@@ -91,11 +97,19 @@ def runVA(scan_with_tasks, outpath):
 
 
 def main():
-
-    results = {"nmap": False, "nessus": False, "tlsobs": False, "httpobs": False, "sshscan": False, "dirbrute": False}
+    
+    scan_success = {
+        'nmap': False,
+        'nessus': False,
+        'tlsobs': False,
+        'httpobs': False,
+        'sshscan': "PASS",  # Default is PASS, as it only gets updated to True as a part of nmap scan task
+        'websearch': False,
+        'dirbrute': False
+    }
     destination = sys.argv[1]
     output_path = "/app/results/" + destination + "/"
-    va_target = target.Target(destination, results)
+    va_target = target.Target(destination, scan_success)
 
     if va_target.isValid():
         # We have a valid target, what is it?
@@ -114,7 +128,7 @@ def main():
 
     va_scan = setupVA(va_target)
     runVA(va_scan, output_path)
-
+    
 
 if __name__ == "__main__":
     main()
