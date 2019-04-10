@@ -20,7 +20,7 @@ coloredlogs.install(
 )
 
 
-def setupVA(va_target, arguments):
+def setupVA(va_target):
 
     # Regardless of the type of target, we will run:
     # 1. Nessus scan
