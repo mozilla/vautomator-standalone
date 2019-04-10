@@ -56,7 +56,9 @@ class WebSearchTask(Task):
         # Search for security hits but without the host domain (ie "not their pages")
         search_results = []
         logger.info("[+] Running WebSearch scan...")
-        for m in googlesearch.search(query="{} security -site:{}".format(self.tasktarget.targetdomain), num=15):
+        for m in googlesearch.search(
+            query="{} security -site:{}".format(self.tasktarget.targetdomain, self.tasktarget.targetdomain), num=15
+        ):
             search_results.append(m)
             if len(search_results) >= result_nr_max:
                 break
